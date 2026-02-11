@@ -1,4 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import {
+  MAP_W,
+  MAP_H,
+  MASK_SCALE,
+  MASK_W,
+  MASK_H,
+  ROOM_REGION_RECTS as ROOM_REGIONS,
+} from '../shared/skeldGeometry';
 
 interface Props {
   onBack: () => void;
@@ -17,17 +25,10 @@ const SPRITE_WALK = [
   '/sprites/walk3.png',
 ];
 
-const MAP_W = 2048;
-const MAP_H = 1872;
 const PLAYER_W = 56;
 const PLAYER_H = 72;
 const SPEED = 3;
 const WALK_FRAME_INTERVAL = 150; // ms per walk frame
-
-// Collision mask is 1/4 scale
-const MASK_SCALE = 4;
-const MASK_W = Math.ceil(MAP_W / MASK_SCALE); // 512
-const MASK_H = Math.ceil(MAP_H / MASK_SCALE); // 468
 
 // Player hitbox half-sizes (slightly smaller than sprite for forgiving collision)
 const HIT_HW = 18; // half-width
@@ -38,35 +39,8 @@ const SPAWN_X = 1250;
 const SPAWN_Y = 220;
 
 // ── Room regions for HUD display ────────────────────────────────
-// Bounding boxes in full map-pixel space (2048×1872).
-// Used to determine which room the player is currently in.
-interface RoomRegion {
-  name: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-const ROOM_REGIONS: RoomRegion[] = [
-  // Overlay rooms (separate image layers)
-  { name: 'Cafeteria',       x: 620,  y: 5,    w: 710, h: 400 },
-  { name: 'Weapons',         x: 1350, y: 10,   w: 360, h: 350 },
-  { name: 'Navigation',      x: 1710, y: 1260, w: 270, h: 290 },
-  { name: 'O2',              x: 1770, y: 810,  w: 220, h: 230 },
-
-  // Rooms present in the base floor image
-  { name: 'Reactor',         x: 20,   y: 570,  w: 270, h: 350 },
-  { name: 'Upper Engine',    x: 100,  y: 180,  w: 350, h: 360 },
-  { name: 'Lower Engine',    x: 100,  y: 1100, w: 350, h: 360 },
-  { name: 'Security',        x: 290,  y: 700,  w: 240, h: 250 },
-  { name: 'MedBay',          x: 450,  y: 190,  w: 310, h: 280 },
-  { name: 'Electrical',      x: 380,  y: 700,  w: 330, h: 320 },
-  { name: 'Storage',         x: 560,  y: 1070, w: 430, h: 400 },
-  { name: 'Admin',           x: 1010, y: 540,  w: 350, h: 300 },
-  { name: 'Shields',         x: 1070, y: 890,  w: 320, h: 310 },
-  { name: 'Communications',  x: 700,  y: 1260, w: 340, h: 300 },
-];
+// Imported from shared/skeldGeometry.ts to keep runtime room detection aligned
+// with collision geometry used by build-collision-mask.ts.
 
 /** Determine which room the player is currently in (or null if in a corridor) */
 function getCurrentRoom(px: number, py: number): string | null {
@@ -275,7 +249,6 @@ export default function SkeldMapTest({ onBack }: Props) {
             width: MAP_W,
             height: MAP_H,
             backgroundImage: `url(${SPACE_OVERLAY_URL})`,
-            backgroundSize: `${MAP_W}px ${MAP_H}px`,
           }}
         />
 
