@@ -1,0 +1,338 @@
+import { useEffect, useRef, useCallback, useState } from 'react';
+
+interface Props {
+  onBack: () => void;
+}
+
+const MAP_URL = encodeURI(
+  '/assets/among us/among-us-assets-main/among-us-assets-main/Maps/Storage/Admin_Comms_Elec_Engine_Halls_Shields_Storage-sharedassets0.assets-150.png'
+);
+
+const SPACE_OVERLAY_URL = '/space-overlay.png';
+const COLLISION_MASK_URL = '/collision-mask.png';
+
+// Extracted individual crewmate frames (from Player sprite sheet)
+const SPRITE_IDLE = '/sprites/idle.png';
+const SPRITE_WALK = [
+  '/sprites/walk1.png',
+  '/sprites/walk2.png',
+  '/sprites/walk3.png',
+];
+
+const MAP_W = 2048;
+const MAP_H = 1872;
+const PLAYER_W = 56;
+const PLAYER_H = 72;
+const SPEED = 3;
+const WALK_FRAME_INTERVAL = 150; // ms per walk frame
+
+// Collision mask is 1/4 scale
+const MASK_SCALE = 4;
+const MASK_W = Math.ceil(MAP_W / MASK_SCALE); // 512
+const MASK_H = Math.ceil(MAP_H / MASK_SCALE); // 468
+
+// Player hitbox half-sizes (slightly smaller than sprite for forgiving collision)
+const HIT_HW = 18; // half-width
+const HIT_HH = 24; // half-height
+
+// Spawn in Cafeteria (center of the large room in the upper-right area)
+const SPAWN_X = 1250;
+const SPAWN_Y = 220;
+
+// ── Room regions for HUD display ────────────────────────────────
+// Bounding boxes in full map-pixel space (2048×1872).
+// Used to determine which room the player is currently in.
+interface RoomRegion {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const ROOM_REGIONS: RoomRegion[] = [
+  // Overlay rooms (separate image layers)
+  { name: 'Cafeteria',       x: 620,  y: 5,    w: 710, h: 400 },
+  { name: 'Weapons',         x: 1350, y: 10,   w: 360, h: 350 },
+  { name: 'Navigation',      x: 1710, y: 1260, w: 270, h: 290 },
+  { name: 'O2',              x: 1770, y: 810,  w: 220, h: 230 },
+
+  // Rooms present in the base floor image
+  { name: 'Reactor',         x: 20,   y: 570,  w: 270, h: 350 },
+  { name: 'Upper Engine',    x: 100,  y: 180,  w: 350, h: 360 },
+  { name: 'Lower Engine',    x: 100,  y: 1100, w: 350, h: 360 },
+  { name: 'Security',        x: 290,  y: 700,  w: 240, h: 250 },
+  { name: 'MedBay',          x: 450,  y: 190,  w: 310, h: 280 },
+  { name: 'Electrical',      x: 380,  y: 700,  w: 330, h: 320 },
+  { name: 'Storage',         x: 560,  y: 1070, w: 430, h: 400 },
+  { name: 'Admin',           x: 1010, y: 540,  w: 350, h: 300 },
+  { name: 'Shields',         x: 1070, y: 890,  w: 320, h: 310 },
+  { name: 'Communications',  x: 700,  y: 1260, w: 340, h: 300 },
+];
+
+/** Determine which room the player is currently in (or null if in a corridor) */
+function getCurrentRoom(px: number, py: number): string | null {
+  for (const room of ROOM_REGIONS) {
+    if (
+      px >= room.x &&
+      px <= room.x + room.w &&
+      py >= room.y &&
+      py <= room.y + room.h
+    ) {
+      return room.name;
+    }
+  }
+  return null;
+}
+
+export default function SkeldMapTest({ onBack }: Props) {
+  const [pos, setPos] = useState({ x: SPAWN_X, y: SPAWN_Y });
+  const [facingLeft, setFacingLeft] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [walkFrame, setWalkFrame] = useState(0);
+  const [debugOverlay, setDebugOverlay] = useState(false);
+
+  const keysRef = useRef(new Set<string>());
+  const posRef = useRef({ x: SPAWN_X, y: SPAWN_Y });
+  const rafRef = useRef<number>(0);
+  const walkTimerRef = useRef<number>(0);
+  const lastFrameTimeRef = useRef<number>(0);
+
+  // Collision mask pixel data (loaded once on mount)
+  const collisionData = useRef<Uint8ClampedArray | null>(null);
+
+  /** Check if a point on the map is walkable (returns true while mask is loading) */
+  const isWalkable = useCallback((mapX: number, mapY: number): boolean => {
+    const data = collisionData.current;
+    if (!data) return true; // allow movement while mask loads
+    const mx = Math.floor(mapX / MASK_SCALE);
+    const my = Math.floor(mapY / MASK_SCALE);
+    if (mx < 0 || mx >= MASK_W || my < 0 || my >= MASK_H) return false;
+    const idx = (my * MASK_W + mx) * 4 + 3; // alpha channel
+    return data[idx] > 0;
+  }, []);
+
+  /** Check if the player hitbox at (cx, cy) is entirely on walkable tiles */
+  const canMoveTo = useCallback(
+    (cx: number, cy: number): boolean => {
+      // Sample 8 points around the hitbox perimeter + center
+      return (
+        isWalkable(cx, cy) &&                        // center
+        isWalkable(cx - HIT_HW, cy - HIT_HH) &&     // top-left
+        isWalkable(cx + HIT_HW, cy - HIT_HH) &&     // top-right
+        isWalkable(cx - HIT_HW, cy + HIT_HH) &&     // bottom-left
+        isWalkable(cx + HIT_HW, cy + HIT_HH) &&     // bottom-right
+        isWalkable(cx,          cy - HIT_HH) &&      // top-center
+        isWalkable(cx,          cy + HIT_HH) &&      // bottom-center
+        isWalkable(cx - HIT_HW, cy) &&               // left-center
+        isWalkable(cx + HIT_HW, cy)                  // right-center
+      );
+    },
+    [isWalkable],
+  );
+
+  const gameLoop = useCallback(
+    (timestamp: number) => {
+      const keys = keysRef.current;
+      let { x, y } = posRef.current;
+      let moved = false;
+
+      // Compute desired movement deltas
+      let dx = 0;
+      let dy = 0;
+
+      if (keys.has('w') || keys.has('arrowup')) dy -= SPEED;
+      if (keys.has('s') || keys.has('arrowdown')) dy += SPEED;
+      if (keys.has('a') || keys.has('arrowleft')) {
+        dx -= SPEED;
+        setFacingLeft(true);
+      }
+      if (keys.has('d') || keys.has('arrowright')) {
+        dx += SPEED;
+        setFacingLeft(false);
+      }
+
+      // Apply X and Y independently for wall-sliding
+      if (dx !== 0) {
+        const nextX = Math.max(HIT_HW, Math.min(MAP_W - HIT_HW, x + dx));
+        if (canMoveTo(nextX, y)) {
+          x = nextX;
+          moved = true;
+        }
+      }
+      if (dy !== 0) {
+        const nextY = Math.max(HIT_HH, Math.min(MAP_H - HIT_HH, y + dy));
+        if (canMoveTo(x, nextY)) {
+          y = nextY;
+          moved = true;
+        }
+      }
+
+      if (moved) {
+        posRef.current = { x, y };
+        setPos({ x, y });
+      }
+
+      setIsMoving(dx !== 0 || dy !== 0);
+
+      // Advance walk frame on a timer
+      if (dx !== 0 || dy !== 0) {
+        if (timestamp - lastFrameTimeRef.current >= WALK_FRAME_INTERVAL) {
+          lastFrameTimeRef.current = timestamp;
+          setWalkFrame((prev) => (prev + 1) % SPRITE_WALK.length);
+        }
+      } else {
+        setWalkFrame(0);
+        lastFrameTimeRef.current = timestamp;
+      }
+
+      rafRef.current = requestAnimationFrame(gameLoop);
+    },
+    [canMoveTo],
+  );
+
+  // Load collision mask on mount
+  useEffect(() => {
+    const img = new Image();
+    img.src = COLLISION_MASK_URL;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      collisionData.current = ctx.getImageData(0, 0, img.width, img.height).data;
+    };
+  }, []);
+
+  // Set up input + game loop
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'g') {
+        setDebugOverlay((prev) => !prev);
+        return;
+      }
+      if (
+        ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
+      ) {
+        e.preventDefault();
+        keysRef.current.add(key);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysRef.current.delete(e.key.toLowerCase());
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    rafRef.current = requestAnimationFrame(gameLoop);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      cancelAnimationFrame(rafRef.current);
+      clearInterval(walkTimerRef.current);
+    };
+  }, [gameLoop]);
+
+  // Preload sprite images
+  useEffect(() => {
+    [SPRITE_IDLE, ...SPRITE_WALK].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
+  // Camera offset: translate map so player is centered in viewport
+  const cameraStyle = {
+    transform: `translate(calc(50vw - ${pos.x}px), calc(50vh - ${pos.y}px))`,
+  };
+
+  // Player position on the map
+  const playerStyle: React.CSSProperties = {
+    left: pos.x - PLAYER_W / 2,
+    top: pos.y - PLAYER_H / 2,
+    width: PLAYER_W,
+    height: PLAYER_H,
+    transform: facingLeft ? 'scaleX(-1)' : 'none',
+  };
+
+  const currentSprite = isMoving ? SPRITE_WALK[walkFrame] : SPRITE_IDLE;
+  const currentRoom = getCurrentRoom(pos.x, pos.y);
+
+  return (
+    <div className="skeld-viewport">
+      {/* Map container moves to keep player centered */}
+      <div className="skeld-map-container" style={cameraStyle}>
+        {/* Map background */}
+        <div
+          className="skeld-map"
+          style={{
+            width: MAP_W,
+            height: MAP_H,
+            backgroundImage: `url(${MAP_URL})`,
+          }}
+        />
+
+        {/* Dark space overlay – hides exterior areas */}
+        <div
+          className="skeld-space-overlay"
+          style={{
+            width: MAP_W,
+            height: MAP_H,
+            backgroundImage: `url(${SPACE_OVERLAY_URL})`,
+            backgroundSize: `${MAP_W}px ${MAP_H}px`,
+          }}
+        />
+
+        {/* Debug collision overlay (toggle with G key) */}
+        {debugOverlay && (
+          <div
+            className="skeld-debug-overlay"
+            style={{
+              width: MAP_W,
+              height: MAP_H,
+              WebkitMaskImage: `url(${COLLISION_MASK_URL})`,
+              maskImage: `url(${COLLISION_MASK_URL})`,
+            }}
+          />
+        )}
+
+        {/* Player character */}
+        <div className="skeld-player" style={playerStyle}>
+          <img
+            src={currentSprite}
+            alt="Crewmate"
+            className={`player-sprite${isMoving ? ' walking' : ''}`}
+            draggable={false}
+          />
+        </div>
+      </div>
+
+      {/* Atmospheric vignette */}
+      <div className="skeld-vignette" />
+
+      {/* HUD overlay */}
+      <div className="skeld-hud">
+        <button className="back-button" onClick={onBack}>
+          &#8592; Menu
+        </button>
+        <div className="skeld-hud-info">
+          <div className="hud-title">The Skeld</div>
+          {currentRoom && (
+            <div className="hud-room">{currentRoom}</div>
+          )}
+          <div className="hud-hint">WASD or Arrow Keys to move</div>
+          <div className="hud-coords">
+            X: {Math.round(pos.x)} &nbsp; Y: {Math.round(pos.y)}
+          </div>
+          {debugOverlay && (
+            <div className="hud-debug">DEBUG: Collision Overlay ON (G to toggle)</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
