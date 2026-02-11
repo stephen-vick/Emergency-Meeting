@@ -1,13 +1,9 @@
 /**
  * Generate collision mask and space overlay for the Skeld map.
  *
- * Approach:
- *   1. Read the map PNG at full resolution (2048×1872)
- *   2. Auto-detect non-background pixels via brightness threshold
- *   3. Downscale to 512×468 (1/4 scale)
- *   4. Apply morphological opening (erode then dilate) to remove thin walls
- *   5. Union with manual rectangles for rooms on separate overlay layers
- *   6. Output collision-mask.png and space-overlay.png
+ * Approach: Rectangle-based walkable areas.
+ * All walkable rooms and corridors are defined as manual rectangles.
+ * Everything outside these rectangles is non-walkable (walls / exterior space).
  *
  * Produces:
  *   public/collision-mask.png  – walkable = white opaque, walls/exterior = transparent
@@ -35,38 +31,16 @@ const SPACE_R = 10;
 const SPACE_G = 10;
 const SPACE_B = 18;
 
-// ── Pixel analysis parameters ───────────────────────────────────
-// Pixels with average brightness above this are considered background (white atlas)
-const BRIGHTNESS_THRESHOLD = 230;
-// Minimum content pixels in a SCALE×SCALE block to mark mask pixel as content
-const CONTENT_BLOCK_MIN = 6;
-// Morphological radii (mask-pixel units; multiply by SCALE for map-pixel equiv.)
-const ERODE_RADIUS = 3;   // removes walls ~12px at map scale
-const DILATE_RADIUS = 4;  // restores floors, slightly forgiving
-// Minimum connected component size to keep (mask pixels). Removes small decorative
-// sprite fragments that survive the morphological opening.
-const MIN_COMPONENT_SIZE = 80;
-
-// ── Path to map image (read from the composite map built by build-composite-map.ts) ──
-const MAP_IMAGE_PATH = path.join(PROJECT_ROOT, 'public', 'skeld-map.png');
-
 // ── Rectangle helper ────────────────────────────────────────────
 interface Rect { x: number; y: number; w: number; h: number }
 
-// ── Manual rectangles for ALL rooms ─────────────────────────────
-// Many rooms have significant transparent-pixel gaps in the base floor image
-// (e.g. Electrical is 88% transparent, Admin 42%). The morphological opening
-// removes sparse content, so these rooms get partially or entirely excluded
-// from the auto-detected mask. Manual rectangles guarantee full room coverage.
-//
+// ── Walkable room rectangles ────────────────────────────────────
 // Coordinates are in full map-pixel space (2048×1872).
 
-const OVERLAY_ROOMS: Rect[] = [
-  // ── Overlay-layer rooms (separate sprite layers, not in base image) ──
-
+const ROOMS: Rect[] = [
   // Cafeteria (large octagonal room, upper-center)
-  { x: 620,  y: 25,  w: 700, h: 360 },   // main body
-  { x: 670,  y: 5,   w: 600, h: 405 },   // wider octagonal extent
+  { x: 620,  y: 25,  w: 700, h: 360 },
+  { x: 670,  y: 5,   w: 600, h: 405 },
 
   // Weapons (upper-right, pentagon-ish shape)
   { x: 1350, y: 10,  w: 360, h: 350 },
@@ -76,8 +50,6 @@ const OVERLAY_ROOMS: Rect[] = [
 
   // O2 (right side, tree room + equipment)
   { x: 1770, y: 810,  w: 220, h: 230 },
-
-  // ── Base-image rooms (present but with large transparent gaps) ──
 
   // Reactor (far left, tall room)
   { x: 20,   y: 570,  w: 270, h: 350 },
@@ -94,13 +66,13 @@ const OVERLAY_ROOMS: Rect[] = [
   // MedBay (upper-left, between cafeteria and upper engine)
   { x: 450,  y: 190,  w: 310, h: 280 },
 
-  // Electrical (left-center, very sparse in base image ~12% content)
+  // Electrical (left-center)
   { x: 380,  y: 700,  w: 330, h: 320 },
 
   // Storage (bottom-center)
   { x: 560,  y: 1070, w: 430, h: 400 },
 
-  // Admin (center-right, ~51% content in base image)
+  // Admin (center-right)
   { x: 1010, y: 540,  w: 350, h: 300 },
 
   // Shields (center, below admin)
@@ -110,12 +82,11 @@ const OVERLAY_ROOMS: Rect[] = [
   { x: 700,  y: 1260, w: 340, h: 300 },
 ];
 
-// Corridors that connect overlay rooms to auto-detected areas.
-// These ensure there are no gaps at room boundaries.
-const OVERLAY_CORRIDORS: Rect[] = [
+// Corridors connecting rooms
+const CORRIDORS: Rect[] = [
   // Cafeteria south exits → main horizontal corridor
-  { x: 920,  y: 380, w: 160, h: 100 },   // centre-left exit
-  { x: 1180, y: 380, w: 140, h: 100 },   // centre-right exit
+  { x: 920,  y: 380, w: 160, h: 100 },
+  { x: 1180, y: 380, w: 140, h: 100 },
 
   // Cafeteria east → Weapons
   { x: 1310, y: 80,  w: 60,  h: 240 },
@@ -147,178 +118,60 @@ const OVERLAY_CORRIDORS: Rect[] = [
 
   // Admin south → lower corridors
   { x: 1100, y: 680, w: 120, h: 200 },
+
+  // ── Left-side corridors ──
+
+  // Upper Engine south → horizontal corridor
+  { x: 300,  y: 440, w: 200, h: 80 },
+
+  // MedBay south → horizontal corridor
+  { x: 500,  y: 440, w: 200, h: 80 },
+
+  // Main horizontal corridor (upper, left side)
+  { x: 420,  y: 440, w: 600, h: 100 },
+
+  // Main horizontal corridor (upper, center-right)
+  { x: 920,  y: 440, w: 450, h: 100 },
+
+  // Reactor east → Security / corridor
+  { x: 280,  y: 620, w: 100, h: 100 },
+
+  // Security → Electrical connector
+  { x: 380,  y: 740, w: 50,  h: 120 },
+
+  // Electrical south → Storage
+  { x: 540,  y: 1000, w: 120, h: 100 },
+
+  // Lower Engine east → corridor
+  { x: 300,  y: 1200, w: 200, h: 80 },
+
+  // Storage → Communications
+  { x: 700,  y: 1380, w: 200, h: 80 },
+
+  // Left vertical corridor (Upper Engine → Reactor → Security → Lower Engine)
+  { x: 200,  y: 520, w: 120, h: 200 },
+  { x: 200,  y: 930, w: 120, h: 200 },
+
+  // Center vertical corridor (Cafeteria south → Admin → Shields → Storage)
+  { x: 1000, y: 480, w: 120, h: 120 },
+  { x: 1060, y: 820, w: 120, h: 100 },
+  { x: 900,  y: 1050, w: 200, h: 100 },
 ];
 
-const ALL_OVERLAY: Rect[] = [...OVERLAY_ROOMS, ...OVERLAY_CORRIDORS];
-
-// ── Morphological helpers ───────────────────────────────────────
-
-/** Erode: pixel is 1 only if ALL neighbours within radius are 1 */
-function erode(src: Uint8Array, w: number, h: number, r: number): Uint8Array {
-  const dst = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let ok = true;
-      outer:
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          const nx = x + dx;
-          const ny = y + dy;
-          if (nx < 0 || nx >= w || ny < 0 || ny >= h || !src[ny * w + nx]) {
-            ok = false;
-            break outer;
-          }
-        }
-      }
-      dst[y * w + x] = ok ? 1 : 0;
-    }
-  }
-  return dst;
-}
-
-/** Dilate: pixel is 1 if ANY neighbour within radius is 1 */
-function dilate(src: Uint8Array, w: number, h: number, r: number): Uint8Array {
-  const dst = new Uint8Array(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let hit = false;
-      outer:
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          const nx = x + dx;
-          const ny = y + dy;
-          if (nx >= 0 && nx < w && ny >= 0 && ny < h && src[ny * w + nx]) {
-            hit = true;
-            break outer;
-          }
-        }
-      }
-      dst[y * w + x] = hit ? 1 : 0;
-    }
-  }
-  return dst;
-}
-
-/** Remove connected components smaller than minSize pixels */
-function removeSmallComponents(src: Uint8Array, w: number, h: number, minSize: number): Uint8Array {
-  const dst = new Uint8Array(src);
-  const visited = new Uint8Array(w * h);
-
-  for (let startY = 0; startY < h; startY++) {
-    for (let startX = 0; startX < w; startX++) {
-      const startIdx = startY * w + startX;
-      if (!dst[startIdx] || visited[startIdx]) continue;
-
-      // Flood-fill to find this component
-      const queue: number[] = [startIdx];
-      const component: number[] = [];
-      visited[startIdx] = 1;
-
-      while (queue.length > 0) {
-        const idx = queue.pop()!;
-        component.push(idx);
-        const cx = idx % w;
-        const cy = (idx - cx) / w;
-
-        // 4-connected neighbours
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const nx = cx + dx;
-          const ny = cy + dy;
-          if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-          const nIdx = ny * w + nx;
-          if (!visited[nIdx] && dst[nIdx]) {
-            visited[nIdx] = 1;
-            queue.push(nIdx);
-          }
-        }
-      }
-
-      // Remove small components
-      if (component.length < minSize) {
-        for (const idx of component) {
-          dst[idx] = 0;
-        }
-      }
-    }
-  }
-  return dst;
-}
+const ALL_WALKABLE: Rect[] = [...ROOMS, ...CORRIDORS];
 
 // ═════════════════════════════════════════════════════════════════
 //  MAIN
 // ═════════════════════════════════════════════════════════════════
 
-console.log('Building collision mask (pixel analysis)...');
+console.log('Building collision mask (rectangle-based)...');
+console.log(`  Mask resolution: ${MASK_W}×${MASK_H} (1/${SCALE} scale)`);
+console.log(`  Rooms: ${ROOMS.length}, Corridors: ${CORRIDORS.length}`);
 
-// ── 1. Read map image ───────────────────────────────────────────
-console.log(`  Reading: ${path.basename(MAP_IMAGE_PATH)}`);
-const mapPng = PNG.sync.read(fs.readFileSync(MAP_IMAGE_PATH));
-console.log(`  Map size: ${mapPng.width}×${mapPng.height}`);
+// ── 1. Build walkable mask from rectangles ──────────────────────
+const mask = new Uint8Array(MASK_W * MASK_H);
 
-// ── 2. Classify pixels: content (1) vs background (0) ──────────
-const totalPixels = mapPng.width * mapPng.height;
-const isContent = new Uint8Array(totalPixels);
-let contentCount = 0;
-
-for (let i = 0; i < totalPixels; i++) {
-  const idx = i * 4;
-  const r = mapPng.data[idx];
-  const g = mapPng.data[idx + 1];
-  const b = mapPng.data[idx + 2];
-  const a = mapPng.data[idx + 3];
-
-  // Transparent pixels are always background
-  if (a < 128) {
-    isContent[i] = 0;
-    continue;
-  }
-
-  const brightness = (r + g + b) / 3;
-  isContent[i] = brightness <= BRIGHTNESS_THRESHOLD ? 1 : 0;
-  contentCount += isContent[i];
-}
-
-console.log(`  Content pixels: ${contentCount} / ${totalPixels} (${(100 * contentCount / totalPixels).toFixed(1)}%)`);
-
-// ── 3. Downscale to mask resolution ─────────────────────────────
-const rawMask = new Uint8Array(MASK_W * MASK_H);
-
-for (let my = 0; my < MASK_H; my++) {
-  for (let mx = 0; mx < MASK_W; mx++) {
-    let cnt = 0;
-    for (let dy = 0; dy < SCALE; dy++) {
-      for (let dx = 0; dx < SCALE; dx++) {
-        const px = mx * SCALE + dx;
-        const py = my * SCALE + dy;
-        if (px < mapPng.width && py < mapPng.height) {
-          cnt += isContent[py * mapPng.width + px];
-        }
-      }
-    }
-    rawMask[my * MASK_W + mx] = cnt >= CONTENT_BLOCK_MIN ? 1 : 0;
-  }
-}
-
-const rawCount = rawMask.reduce((s, v) => s + v, 0);
-console.log(`  Downscaled content: ${rawCount} mask pixels`);
-
-// ── 4. Morphological opening (erode then dilate) ────────────────
-console.log(`  Erode(${ERODE_RADIUS}) → Dilate(${DILATE_RADIUS})...`);
-const opened = dilate(erode(rawMask, MASK_W, MASK_H, ERODE_RADIUS), MASK_W, MASK_H, DILATE_RADIUS);
-
-const openedCount = opened.reduce((s, v) => s + v, 0);
-console.log(`  After opening: ${openedCount} mask pixels`);
-
-// ── 4b. Remove small isolated components (decorative fragments) ─
-console.log(`  Removing components < ${MIN_COMPONENT_SIZE}px...`);
-const cleaned = removeSmallComponents(opened, MASK_W, MASK_H, MIN_COMPONENT_SIZE);
-const cleanedCount = cleaned.reduce((s, v) => s + v, 0);
-console.log(`  After cleanup: ${cleanedCount} mask pixels (removed ${openedCount - cleanedCount})`);
-
-// ── 5. Union with overlay room / corridor rectangles ────────────
-const finalMask = new Uint8Array(cleaned);
-
-for (const rect of ALL_OVERLAY) {
+for (const rect of ALL_WALKABLE) {
   const sx = Math.max(0, Math.floor(rect.x / SCALE));
   const sy = Math.max(0, Math.floor(rect.y / SCALE));
   const ex = Math.min(MASK_W, Math.ceil((rect.x + rect.w) / SCALE));
@@ -326,20 +179,21 @@ for (const rect of ALL_OVERLAY) {
 
   for (let y = sy; y < ey; y++) {
     for (let x = sx; x < ex; x++) {
-      finalMask[y * MASK_W + x] = 1;
+      mask[y * MASK_W + x] = 1;
     }
   }
 }
 
-const finalCount = finalMask.reduce((s, v) => s + v, 0);
-console.log(`  Final walkable: ${finalCount} mask pixels (with overlay rooms)`);
+const walkableCount = mask.reduce((s, v) => s + v, 0);
+const totalMaskPixels = MASK_W * MASK_H;
+console.log(`  Walkable: ${walkableCount} / ${totalMaskPixels} mask pixels (${(100 * walkableCount / totalMaskPixels).toFixed(1)}%)`);
 
-// ── 6. Write collision-mask.png ─────────────────────────────────
+// ── 2. Write collision-mask.png ─────────────────────────────────
 const maskPng = new PNG({ width: MASK_W, height: MASK_H });
 maskPng.data.fill(0);
 
-for (let i = 0; i < MASK_W * MASK_H; i++) {
-  if (finalMask[i]) {
+for (let i = 0; i < totalMaskPixels; i++) {
+  if (mask[i]) {
     const idx = i * 4;
     maskPng.data[idx]     = 255;
     maskPng.data[idx + 1] = 255;
@@ -351,12 +205,12 @@ for (let i = 0; i < MASK_W * MASK_H; i++) {
 fs.writeFileSync(path.join(OUT_DIR, 'collision-mask.png'), PNG.sync.write(maskPng));
 console.log(`  → collision-mask.png: ${MASK_W}×${MASK_H}`);
 
-// ── 7. Write space-overlay.png (inverted mask, dark fill) ───────
+// ── 3. Write space-overlay.png (inverted mask, dark fill) ───────
 const overlayPng = new PNG({ width: MASK_W, height: MASK_H });
 
-for (let i = 0; i < MASK_W * MASK_H; i++) {
+for (let i = 0; i < totalMaskPixels; i++) {
   const idx = i * 4;
-  if (finalMask[i]) {
+  if (mask[i]) {
     overlayPng.data[idx]     = 0;
     overlayPng.data[idx + 1] = 0;
     overlayPng.data[idx + 2] = 0;
@@ -372,4 +226,4 @@ for (let i = 0; i < MASK_W * MASK_H; i++) {
 fs.writeFileSync(path.join(OUT_DIR, 'space-overlay.png'), PNG.sync.write(overlayPng));
 console.log(`  → space-overlay.png: ${MASK_W}×${MASK_H}`);
 
-console.log('\nDone! Pixel-analysis collision mask generated.');
+console.log('\nDone! Rectangle-based collision mask generated.');

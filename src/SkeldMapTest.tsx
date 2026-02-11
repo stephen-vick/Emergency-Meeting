@@ -88,8 +88,6 @@ export default function SkeldMapTest({ onBack }: Props) {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [walkFrame, setWalkFrame] = useState(0);
-  const [debugOverlay, setDebugOverlay] = useState(false);
-
   const keysRef = useRef(new Set<string>());
   const posRef = useRef({ x: SPAWN_X, y: SPAWN_Y });
   const rafRef = useRef<number>(0);
@@ -207,10 +205,6 @@ export default function SkeldMapTest({ onBack }: Props) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (key === 'g') {
-        setDebugOverlay((prev) => !prev);
-        return;
-      }
       if (
         ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
       ) {
@@ -285,19 +279,6 @@ export default function SkeldMapTest({ onBack }: Props) {
           }}
         />
 
-        {/* Debug collision overlay (toggle with G key) */}
-        {debugOverlay && (
-          <div
-            className="skeld-debug-overlay"
-            style={{
-              width: MAP_W,
-              height: MAP_H,
-              WebkitMaskImage: `url(${COLLISION_MASK_URL})`,
-              maskImage: `url(${COLLISION_MASK_URL})`,
-            }}
-          />
-        )}
-
         {/* Player character */}
         <div className="skeld-player" style={playerStyle}>
           <img
@@ -326,9 +307,6 @@ export default function SkeldMapTest({ onBack }: Props) {
           <div className="hud-coords">
             X: {Math.round(pos.x)} &nbsp; Y: {Math.round(pos.y)}
           </div>
-          {debugOverlay && (
-            <div className="hud-debug">DEBUG: Collision Overlay ON (G to toggle)</div>
-          )}
         </div>
       </div>
     </div>
