@@ -47,13 +47,8 @@ const DILATE_RADIUS = 4;  // restores floors, slightly forgiving
 // sprite fragments that survive the morphological opening.
 const MIN_COMPONENT_SIZE = 80;
 
-// ── Path to map image ───────────────────────────────────────────
-const MAP_IMAGE_PATH = path.join(
-  PROJECT_ROOT,
-  'assets', 'among us', 'among-us-assets-main', 'among-us-assets-main',
-  'Maps', 'Storage',
-  'Admin_Comms_Elec_Engine_Halls_Shields_Storage-sharedassets0.assets-150.png',
-);
+// ── Path to map image (read from the composite map built by build-composite-map.ts) ──
+const MAP_IMAGE_PATH = path.join(PROJECT_ROOT, 'public', 'skeld-map.png');
 
 // ── Rectangle helper ────────────────────────────────────────────
 interface Rect { x: number; y: number; w: number; h: number }

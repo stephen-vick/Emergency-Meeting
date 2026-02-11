@@ -4,9 +4,7 @@ interface Props {
   onBack: () => void;
 }
 
-const MAP_URL = encodeURI(
-  '/assets/among us/among-us-assets-main/among-us-assets-main/Maps/Storage/Admin_Comms_Elec_Engine_Halls_Shields_Storage-sharedassets0.assets-150.png'
-);
+const MAP_URL = '/skeld-map.png';
 
 const SPACE_OVERLAY_URL = '/space-overlay.png';
 const COLLISION_MASK_URL = '/collision-mask.png';

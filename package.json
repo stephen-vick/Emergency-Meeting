@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "build:manifest": "tsx scripts/build-manifest.ts",
+    "build:composite": "tsx scripts/build-composite-map.ts",
     "build:collision": "tsx scripts/build-collision-mask.ts",
-    "dev": "npm run build:manifest && npm run build:collision && vite",
-    "build": "npm run build:manifest && npm run build:collision && vite build",
+    "build:assets": "npm run build:manifest && npm run build:composite && npm run build:collision",
+    "dev": "npm run build:assets && vite",
+    "build": "npm run build:assets && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
