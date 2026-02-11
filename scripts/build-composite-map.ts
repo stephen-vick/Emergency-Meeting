@@ -243,8 +243,8 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       x: 850,
       y: -10,
       scale: 0.60,
-      enabled: true,
-      notes: 'Decorative top hatch over cafeteria center.',
+      enabled: false,
+      notes: 'Disabled by default to avoid covering cafeteria tables; enable via --include-optional=dropshipTop when needed.',
     },
   ],
   optional: [
