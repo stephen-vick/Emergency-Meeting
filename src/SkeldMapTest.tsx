@@ -7,7 +7,7 @@ import {
   MASK_H,
   ROOM_REGION_RECTS as ROOM_REGIONS,
 } from '../shared/skeldGeometry';
-import { ElectricalPanelSelector } from './components/ElectricalPanelSelector';
+import { FixWiringMinigame } from './components/FixWiringMinigame';
 
 interface Props {
   onBack: () => void;
@@ -329,7 +329,10 @@ export default function SkeldMapTest({ onBack }: Props) {
       </div>
 
       {showElectricalPanels && (
-        <ElectricalPanelSelector onClose={() => setShowElectricalPanels(false)} />
+        <FixWiringMinigame
+          onComplete={() => setShowElectricalPanels(false)}
+          onClose={() => setShowElectricalPanels(false)}
+        />
       )}
     </div>
   );
