@@ -1275,36 +1275,6 @@ body {
   color: var(--text-muted);
 }
 
-.electrical-panel-body-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.electrical-panel-connect-wrap {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.electrical-panel-connect-btn {
-  padding: 10px 28px;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  background: var(--skeld-accent);
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: filter 0.15s ease;
-}
-
-.electrical-panel-connect-btn:hover {
-  filter: brightness(1.15);
-}
-
 .electrical-wire-plug {
   stroke: rgba(0, 0, 0, 0.25);
   stroke-width: 1;
@@ -1325,6 +1295,44 @@ body {
   max-width: min(calc(100vw - 32px), 960px);
 }
 
+/* 2×2 grid: row1 Patient | Donor, row2 Product | Complete Task */
+.electrical-cabinets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.electrical-complete-task-btn {
+  justify-self: center;
+  align-self: center;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0d1117;
+  background: linear-gradient(180deg, #7ee787 0%, #3fb950 50%, #2ea043 100%);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-shadow:
+    0 0 16px rgba(46, 160, 67, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.electrical-complete-task-btn:hover {
+  filter: brightness(1.1);
+  box-shadow:
+    0 0 20px rgba(46, 160, 67, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.electrical-complete-task-btn:active {
+  filter: brightness(0.95);
+}
+
 .electrical-cabinets-header {
   position: relative;
   margin-bottom: 20px;
@@ -1342,12 +1350,6 @@ body {
   color: var(--text-muted);
 }
 
-.electrical-cabinets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  justify-content: center;
-}
 
 /* Single cabinet: looks like a real electrical panel */
 .electrical-cabinet {

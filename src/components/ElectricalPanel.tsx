@@ -152,8 +152,6 @@ export function ElectricalPanelContent({ config, onClose }: ElectricalPanelConte
       PANEL_PADDING + COL_HEADER_HEIGHT + (i + 0.5) * ROW_HEIGHT
   );
 
-  const allConnected = connections.every((c) => c >= 0);
-
   const getWireColor = (index: number) =>
     WIRE_COLORS[index % WIRE_COLORS.length];
 
@@ -198,11 +196,10 @@ export function ElectricalPanelContent({ config, onClose }: ElectricalPanelConte
         </button>
       )}
 
-      <div className="electrical-panel-body-wrap">
-        <div
-          className="electrical-panel-body electrical-panel-two-cols"
-          style={{ height: bodyHeight }}
-        >
+      <div
+        className="electrical-panel-body electrical-panel-two-cols"
+        style={{ height: bodyHeight }}
+      >
           <svg
             className="electrical-panel-wires"
             viewBox={`0 0 ${BODY_WIDTH} ${bodyHeight}`}
@@ -279,19 +276,6 @@ export function ElectricalPanelContent({ config, onClose }: ElectricalPanelConte
             );
           })}
         </div>
-        </div>
-
-        {allConnected && onClose && (
-          <div className="electrical-panel-connect-wrap">
-            <button
-              type="button"
-              className="electrical-panel-connect-btn"
-              onClick={onClose}
-            >
-              Connect
-            </button>
-          </div>
-        )}
       </div>
     </>
   );

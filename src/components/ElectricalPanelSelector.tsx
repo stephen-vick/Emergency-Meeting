@@ -87,6 +87,14 @@ export function ElectricalPanelSelector({ onClose }: Props) {
               </div>
             );
           })}
+          <button
+            type="button"
+            className="electrical-complete-task-btn"
+            onClick={onClose}
+            aria-label="Complete task and exit Electrical Room panels"
+          >
+            Complete Task
+          </button>
         </div>
       </div>
     </div>
