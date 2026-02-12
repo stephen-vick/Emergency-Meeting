@@ -1,16 +1,18 @@
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { PANEL_CONFIGS } from './ElectricalPanel';
+import { ElectricalPanelContent } from './ElectricalPanel';
 
-type PanelId = 'patient' | 'donor' | 'product';
-
-interface Props {
-  onSelect: (panelId: PanelId) => void;
-  onClose: () => void;
-}
+export type PanelId = 'patient' | 'donor' | 'product';
 
 const PANEL_IDS: PanelId[] = ['patient', 'donor', 'product'];
 
-export function ElectricalPanelSelector({ onSelect, onClose }: Props) {
+interface Props {
+  onClose: () => void;
+}
+
+export function ElectricalPanelSelector({ onClose }: Props) {
+  const [openPanelId, setOpenPanelId] = useState<PanelId | null>(null);
+
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === e.currentTarget) onClose();
@@ -18,19 +20,23 @@ export function ElectricalPanelSelector({ onSelect, onClose }: Props) {
     [onClose]
   );
 
+  const handleClosePanel = useCallback(() => {
+    setOpenPanelId(null);
+  }, []);
+
   return (
     <div
       className="electrical-panel-overlay electrical-selector-overlay"
       onClick={handleOverlayClick}
     >
       <div
-        className="electrical-selector-modal"
+        className="electrical-cabinets-container"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="electrical-selector-header">
-          <h3>Electrical Panels</h3>
+        <div className="electrical-cabinets-header">
+          <h3>Electrical Room — Panels</h3>
           <p className="electrical-selector-subtitle">
-            Click a panel to open it
+            Select a panel to open its door
           </p>
           <button
             type="button"
@@ -42,24 +48,43 @@ export function ElectricalPanelSelector({ onSelect, onClose }: Props) {
           </button>
         </div>
 
-        <div className="electrical-selector-cards">
+        <div className="electrical-cabinets">
           {PANEL_IDS.map((id) => {
             const config = PANEL_CONFIGS[id];
+            const isOpen = openPanelId === id;
             return (
-              <button
+              <div
                 key={id}
-                type="button"
-                className="electrical-selector-card"
-                onClick={() => onSelect(id)}
-                aria-label={`Open ${config.title} panel`}
+                className={`electrical-cabinet ${isOpen ? 'electrical-cabinet-open' : ''}`}
               >
-                <span className="electrical-selector-card-title">
-                  {config.title}
-                </span>
-                <span className="electrical-selector-card-attrs">
-                  {config.attributes.length} attributes
-                </span>
-              </button>
+                <div className="electrical-cabinet-frame">
+                  <div className="electrical-cabinet-label">
+                    {config.title.toUpperCase()}
+                  </div>
+                  <div className="electrical-cabinet-content-wrap">
+                    <div className="electrical-cabinet-content">
+                      <p className="electrical-cabinet-subtitle">
+                        Select the available attributes in the desired order
+                      </p>
+                      <ElectricalPanelContent
+                        config={config}
+                        onClose={handleClosePanel}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className={`electrical-cabinet-door ${isOpen ? 'electrical-cabinet-door-open' : ''}`}
+                      aria-expanded={isOpen}
+                      aria-label={isOpen ? `Close ${config.title} panel` : `Open ${config.title} panel`}
+                      onClick={() => setOpenPanelId((prev) => (prev === id ? null : id))}
+                    >
+                      <span className="electrical-cabinet-door-inner">
+                        {config.title}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>

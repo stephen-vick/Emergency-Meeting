@@ -7,7 +7,6 @@ import {
   MASK_H,
   ROOM_REGION_RECTS as ROOM_REGIONS,
 } from '../shared/skeldGeometry';
-import { ElectricalPanel, PANEL_CONFIGS } from './components/ElectricalPanel';
 import { ElectricalPanelSelector } from './components/ElectricalPanelSelector';
 
 interface Props {
@@ -66,7 +65,7 @@ export default function SkeldMapTest({ onBack }: Props) {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [walkFrame, setWalkFrame] = useState(0);
-  const [electricalView, setElectricalView] = useState<ElectricalView>(null);
+  const [showElectricalPanels, setShowElectricalPanels] = useState(false);
   const keysRef = useRef(new Set<string>());
   const prevRoomRef = useRef<string | null>(null);
   const posRef = useRef({ x: SPAWN_X, y: SPAWN_Y });
@@ -189,9 +188,7 @@ export default function SkeldMapTest({ onBack }: Props) {
         const room = getCurrentRoom(posRef.current.x, posRef.current.y);
         if (room === 'Electrical') {
           e.preventDefault();
-          setElectricalView((prev) =>
-            prev == null ? 'selector' : prev === 'selector' ? null : 'selector'
-          );
+          setShowElectricalPanels((prev) => !prev);
           return;
         }
       }
@@ -249,7 +246,7 @@ export default function SkeldMapTest({ onBack }: Props) {
     const prev = prevRoomRef.current;
     prevRoomRef.current = currentRoom ?? null;
     if (prev !== 'Electrical' && currentRoom === 'Electrical') {
-      setElectricalView('selector');
+      setShowElectricalPanels(true);
     }
   }, [currentRoom]);
 
@@ -303,7 +300,7 @@ export default function SkeldMapTest({ onBack }: Props) {
           )}
           <div className="hud-hint">
             WASD or Arrow Keys to move
-            {currentRoom === 'Electrical' && electricalView == null && (
+            {currentRoom === 'Electrical' && !showElectricalPanels && (
               <span className="hud-task-hint"> · Press E to open electrical panels</span>
             )}
           </div>
@@ -313,17 +310,8 @@ export default function SkeldMapTest({ onBack }: Props) {
         </div>
       </div>
 
-      {electricalView === 'selector' && (
-        <ElectricalPanelSelector
-          onSelect={(id) => setElectricalView(id)}
-          onClose={() => setElectricalView(null)}
-        />
-      )}
-      {electricalView !== null && electricalView !== 'selector' && (
-        <ElectricalPanel
-          config={PANEL_CONFIGS[electricalView]}
-          onClose={() => setElectricalView('selector')}
-        />
+      {showElectricalPanels && (
+        <ElectricalPanelSelector onClose={() => setShowElectricalPanels(false)} />
       )}
     </div>
   );
