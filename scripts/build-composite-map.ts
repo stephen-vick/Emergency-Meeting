@@ -11,7 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { PNG } from 'pngjs';
-import { MAP_W as CANVAS_W, MAP_H as CANVAS_H, ROOM_REGION_RECTS, type Rect } from '../shared/skeldGeometry';
+import { MAP_W as CANVAS_W, MAP_H as CANVAS_H, ROOM_REGION_RECTS, WALKABLE_ROOM_RECTS, CORRIDOR_RECTS, type Rect } from '../shared/skeldGeometry';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..');
@@ -101,9 +101,9 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       x: 100,
       y: 180,
       scale: 0.70,
-      crop: { x: 0, y: 0, w: 500, h: 350 },
+      crop: { x: 0, y: 0, w: 500, h: 515 },
       enabled: true,
-      notes: 'Top engine variant from stacked engine texture.',
+      notes: 'Top engine section; crop height increased to fill 360px target height.',
     },
     {
       id: 'lowerEngine',
@@ -114,9 +114,9 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       x: 100,
       y: 1100,
       scale: 0.70,
-      crop: { x: 0, y: 0, w: 500, h: 350 },
+      crop: { x: 0, y: 514, w: 500, h: 510 },
       enabled: true,
-      notes: 'Reuses same source/crop as upper engine.',
+      notes: 'Bottom engine section of stacked texture to match Lower Engine geometry.',
     },
     {
       id: 'cafeteria',
@@ -126,9 +126,9 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       file: 'Cafeteria/Cafeteria-sharedassets0.assets-210.png',
       x: 635,
       y: 5,
-      scale: 0.69,
+      scale: 0.70,
       enabled: true,
-      notes: 'Large top-center room render.',
+      notes: 'Scaled to fill expanded cafeteria collision rects (union ≈650,20 to 1310,680).',
     },
     {
       id: 'weapons',
@@ -136,12 +136,12 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       label: 'Weapons',
       roomName: 'Weapons',
       file: 'Weapons-sharedassets0.assets-201.png',
-      x: 1330,
-      y: 0,
-      scale: 0.55,
-      crop: { x: 0, y: 0, w: 630, h: 500 },
+      x: 1350,
+      y: 10,
+      scale: 0.70,
+      crop: { x: 30, y: 0, w: 490, h: 490 },
       enabled: true,
-      notes: 'Crops out the left turret room from broader sheet.',
+      notes: 'Tight crop of turret room, offset 30px left to trim pipe artifacts, match Weapons target.',
     },
     {
       id: 'navigation',
@@ -162,12 +162,12 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       label: 'MedBay',
       roomName: 'MedBay',
       file: 'MedBay-sharedassets0.assets-110.png',
-      x: 435,
-      y: 165,
+      x: 440,
+      y: 180,
       scale: 0.62,
-      crop: { x: 0, y: 0, w: 500, h: 520 },
+      crop: { x: 0, y: 0, w: 525, h: 480 },
       enabled: true,
-      notes: 'Removes right-side animation frames.',
+      notes: 'Offset outward 10px so sprite walls align with collision edges; crop expanded to match (440,180,325,295) target.',
     },
     {
       id: 'o2',
@@ -201,11 +201,11 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       label: 'Storage',
       roomName: 'Storage',
       file: 'Storage/room_storage-sharedassets0.assets-98.png',
-      x: 555,
+      x: 560,
       y: 1070,
       scale: 0.70,
       enabled: true,
-      notes: 'Full storage room detail pass.',
+      notes: 'Aligned to Storage target rect x position.',
     },
     {
       id: 'communications',
@@ -219,6 +219,19 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       crop: { x: 0, y: 0, w: 423, h: 400 },
       enabled: true,
       notes: 'Tighter crop aligned to Communications target room.',
+    },
+    {
+      id: 'admin',
+      stage: 'roomInteriors',
+      label: 'Admin',
+      roomName: 'Admin',
+      file: 'compLabGreenHouseAdminWalls-sharedassets0.assets-67.png',
+      x: 1005,
+      y: 535,
+      scale: 0.93,
+      crop: { x: 0, y: 870, w: 390, h: 355 },
+      enabled: true,
+      notes: 'Admin room interior; offset 5px to align walls with collision rect (1010,540,355,310).',
     },
   ],
   foreground: [
@@ -259,19 +272,7 @@ const LAYER_STACK: Record<StageName, LayerConfig[]> = {
       enabled: false,
       notes: 'Exterior ship art; disabled by default.',
     },
-    {
-      id: 'compLabAdmin',
-      stage: 'optional',
-      label: 'CompLab Admin Floor Slice',
-      file: 'compLabGreenHouseAdminWalls-sharedassets0.assets-67.png',
-      x: 1010,
-      y: 540,
-      scale: 0.70,
-      crop: { x: 0, y: 760, w: 500, h: 560 },
-      roomName: 'Admin',
-      enabled: false,
-      notes: 'Admin floor/wall slice from compLab sheet aligned to Admin bounds.',
-    },
+    // compLabAdmin moved to roomInteriors stage as 'admin' layer
     {
       id: 'compLabGreenhouse',
       stage: 'optional',
@@ -436,9 +437,10 @@ function getFilePath(layer: LayerConfig): string {
 }
 
 function shouldRenderLayer(layer: LayerConfig): boolean {
-  if (!layer.enabled && layer.stage !== 'optional') return false;
-  if (layer.stage !== 'optional') return true;
-  return layer.enabled || includeOptional.has(layer.id);
+  // CLI --include-optional can force-enable any layer by id
+  if (includeOptional.has(layer.id)) return true;
+  if (!layer.enabled) return false;
+  return true;
 }
 
 function saveDebugImage(fileName: string, png: PNG): void {
@@ -553,6 +555,29 @@ function printAlignmentReport(renderedLayers: RenderedLayer[]): void {
   }
 }
 
+function drawRectOutline(dst: PNG, rect: Rect, r: number, g: number, b: number, a = 255): void {
+  const x1 = Math.max(0, rect.x);
+  const y1 = Math.max(0, rect.y);
+  const x2 = Math.min(dst.width - 1, rect.x + rect.w);
+  const y2 = Math.min(dst.height - 1, rect.y + rect.h);
+  for (let t = 0; t < 2; t++) {
+    for (let x = x1; x <= x2; x++) {
+      for (const y of [y1 + t, y2 - t]) {
+        if (y < 0 || y >= dst.height) continue;
+        const idx = (y * dst.width + x) * 4;
+        dst.data[idx] = r; dst.data[idx + 1] = g; dst.data[idx + 2] = b; dst.data[idx + 3] = a;
+      }
+    }
+    for (let y = y1; y <= y2; y++) {
+      for (const x of [x1 + t, x2 - t]) {
+        if (x < 0 || x >= dst.width) continue;
+        const idx = (y * dst.width + x) * 4;
+        dst.data[idx] = r; dst.data[idx + 1] = g; dst.data[idx + 2] = b; dst.data[idx + 3] = a;
+      }
+    }
+  }
+}
+
 function main() {
   console.log('Building composite Skeld map from sprite layers...');
   if (DEBUG) console.log('  DEBUG: writing per-layer and stage composite images');
@@ -589,6 +614,19 @@ function main() {
 
   if (REPORT) {
     printAlignmentReport(renderedLayers);
+  }
+
+  if (DEBUG) {
+    // Generate collision-rect overlay on top of the composite map
+    const overlay = clonePng(canvas);
+    for (const rect of WALKABLE_ROOM_RECTS) {
+      drawRectOutline(overlay, rect, 0, 255, 0); // green for rooms
+    }
+    for (const rect of CORRIDOR_RECTS) {
+      drawRectOutline(overlay, rect, 255, 255, 0); // yellow for corridors
+    }
+    saveDebugImage('collision-overlay.png', overlay);
+    console.log('  DEBUG: collision-overlay.png written');
   }
 
   console.log('\nComposite map built successfully.');
