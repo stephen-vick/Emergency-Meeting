@@ -1,85 +1,141 @@
 # Emergency Meeting -- Hackathon 2026 Presentation Guide
 
----
-
-## The Central Argument
-
-**The stewardship engagement problem is real.** When organizations decentralize data stewardship -- pushing record matching, validation, and enrichment out to business users across departments -- participation drops and quality suffers. Stewards see it as a chore. Reviewers rubber-stamp. The data stays dirty.
-
-**Gamification is the answer, and the inefficiency is the point.** A game mechanic takes longer than a bulk-approve button. But that friction is *productive friction*. It forces the steward to actually look at the data, make a deliberate decision, and feel the consequence of getting it wrong. The result: higher engagement, higher accuracy, and measurable quality metrics per steward -- not just per dataset.
-
-**This demo proves the concept.** We rebuilt the Among Us Skeld experience in the browser and embedded real patient-record matching directly into the gameplay. The wiring task *is* a stewardship task. The game *is* the workflow.
+5 slides, 10 minutes. Stephen carries the thesis, metrics, and rollout. Darias runs the live demo.
 
 ---
 
-## Why Gamification Works for Decentralized Stewardship
+## Slide 1 -- Title + One-Line Thesis
 
-### The Problem with Traditional Stewardship UIs
+**Emergency Meeting: Gamifying Data Stewardship**
 
-- Stewards are usually business users, not data professionals
-- Stewardship queues look like spreadsheets -- low engagement, high fatigue
-- Decentralization multiplies the problem: more stewards, less training, less motivation
-- No visibility into *who* is doing quality work vs. who is clicking through
+*Subtitle:* Turning stewardship actions into micro-games that create deliberate review + measurable quality signals
 
-### What Game Mechanics Solve
+**Team:** Stephen Vick, Darias Brown
 
-| Challenge | Game Mechanic | Outcome |
-|-----------|---------------|---------|
-| Low engagement | Tasks feel like gameplay, not chores | Stewards *want* to complete tasks |
-| Rubber-stamping | Deliberate drag-and-drop matching forces attention | Each decision is intentional |
-| No accountability | Per-steward accuracy tracking (right/wrong/retry) | Quality metrics by person |
-| Invisible effort | Task completion scores, streaks, leaderboards | Recognition and friendly competition |
-| Training gap | Wrong-match feedback teaches correct answers | Stewards learn the domain as they play |
-| Reviewer burden | Accuracy scores identify who needs review vs. who is trusted | Risk-based review allocation |
+### Speaker notes (0:00--0:45) -- Stephen
 
-### The Efficiency Trade-off
-
-Yes, dragging a wire takes longer than clicking a checkbox. That is a feature, not a bug:
-
-- **Checkbox stewardship:** 200 records/hour, 60% accuracy, no learning
-- **Gamified stewardship:** 80 records/hour, 95% accuracy, stewards improve over time
-- **Net effect:** Fewer downstream errors, less rework, lower cost of poor data quality
-- The throughput "loss" is recovered many times over in reduced remediation
+- "We're not claiming everyone has an engagement problem."
+- "We're showing a specific lever: game mechanics can make stewardship more approachable *and* generate quality telemetry."
+- "In 10 minutes: the thesis, the demo, the metrics model, and how you deploy it safely."
 
 ---
 
-## Quality Metrics Enabled by Game Mechanics
+## Slide 2 -- The Gamification Thesis (What game mechanics add)
 
-### Per-Steward Metrics (the "Player Stats" model)
+**Game mechanics we're borrowing (intentionally)**
 
-- **Accuracy rate** -- % of tasks completed correctly on first attempt
-- **Retry rate** -- how often a steward gets it wrong before getting it right (learning signal)
-- **Completion velocity** -- time per task (identifies both expertise and disengagement)
-- **Streak tracking** -- consecutive correct completions (engagement indicator)
-- **Domain proficiency** -- accuracy broken down by data domain (patient, product, location)
+- **Deliberate interaction** (drag/match, not just click)
+- **Immediate feedback** (wrong -> retry loop)
+- **Visible completion** (task complete)
+- **Identity + attribution** (every action tied to a steward)
 
-### Per-Reviewer Metrics
+**Why this is useful**
 
-- **Override rate** -- how often a reviewer changes a steward's answer
-- **Agreement rate** -- how often reviewer confirms steward was correct
-- **Review throughput** -- reviews completed per session
-- **Steward trust score** -- derived from accuracy; high-trust stewards need less review
+- Encourages careful review where correctness matters
+- Builds "learning in the flow" (feedback trains)
+- Produces measurable signals from normal work
 
-### Organizational Metrics
+### Speaker notes (0:45--2:15) -- Stephen
 
-- **Engagement rate** -- % of assigned stewards who actively complete tasks
-- **Quality trend** -- accuracy over time by team, department, or domain
-- **Training effectiveness** -- retry rate decreasing over time = stewards are learning
-- **Decentralization health** -- quality held constant (or improving) as steward count grows
-
-### How Among Us Mechanics Map to These Metrics
-
-- **Task complete / wrong wires** = accuracy tracking per steward
-- **Randomized records** = prevents memorization, tests real understanding
-- **Visual feedback (glow, "Task Complete")** = dopamine loop that sustains engagement
-- **Room-based tasks** = domain-specific stewardship (Electrical = patient data, other rooms = other domains)
-- **Crewmate identity** = steward identity; every action is attributable
+- "The core design idea is *productive friction*: slightly slower interaction that nudges attention."
+- "Immediate feedback is doing double duty: it improves the current decision and teaches the steward."
+- "Identity matters: we can connect outcomes and behaviors to a person -- not to shame, but to target coaching and reduce blanket review."
 
 ---
 
-## What the Demo Shows Today
+## Slide 3 -- Live Demo (Darias)
 
-### The Skeld Map -- Stewardship as a World
+**What you'll see**
+
+- Skeld-style navigation (room = domain)
+- Electrical -> Fix Wires panel
+- Matching fields to values
+- Wrong feedback -> correction -> Task Complete
+
+### Speaker notes (2:15--2:30) -- Stephen (handoff)
+
+- "Darias will run the demo."
+- "Watch for two things: (1) the forced, deliberate matching and (2) the immediate wrong->retry feedback loop."
+- "Those two mechanics are what make measurement and training possible."
+
+*(Darias demo runs ~2:00, then Stephen resumes.)*
+
+---
+
+## Slide 4 -- Quality Telemetry (The Differentiator)
+
+**Traditional stewardship often measures outcomes after the fact.**
+**Gamified stewardship measures the interaction.**
+
+**Three primary signals**
+
+- **First-attempt accuracy** -- correctness without assistance
+- **Retry rate** -- where learning is happening
+- **Time-to-complete** -- confidence/uncertainty proxy
+
+**Derived outputs**
+
+- **Trust score** (accuracy + retries + consistency)
+- **Targeted coaching** (which domains/fields cause retries)
+- **Risk-based review routing** (focus review where needed)
+
+### Speaker notes (4:30--7:30) -- Stephen
+
+- "This is the centerpiece. The game isn't just 'fun UI' -- it's a measurement system."
+- "Accuracy is obvious. Retry rate is the learning signal. Time-to-complete tells you where people hesitate or where the task is ambiguous."
+- "From those you can compute trust scores and route reviewer attention intelligently."
+- "This is org-friendly: it supports training and quality assurance, not policing. It also helps tune the task itself -- if everyone retries on the same field, your data or instructions need improvement."
+
+---
+
+## Slide 5 -- How You Deploy It (Org-Friendly + Next)
+
+**Low-risk adoption model**
+
+- Start with **one task type** (Fix Wires matching)
+- Run an **opt-in pilot** (new stewards, a department, training cohort)
+- Expand only where **measured outcomes justify it**
+
+**What's next (examples)**
+
+- Merge/split records (Reactor)
+- Golden record selection (Admin/Navigation)
+- Address standardization (Comms)
+
+**End state**
+
+- Multiple stewardship task types, all emitting comparable signals
+- Reviewer dashboard driven by trust + risk
+
+### Speaker notes (7:30--10:00) -- Stephen
+
+- "This doesn't require governance change on day one."
+- "Pilot it like any workflow improvement: baseline, test, measure."
+- "If it helps, expand. If not, you've still learned where ambiguity or training gaps exist."
+- Close: "We've shown a mechanics-driven way to make stewardship deliberate, teachable, and measurable. Questions."
+
+---
+
+## Talk Track in One Sentence Per Slide
+
+1. **Title:** "We gamified stewardship to make it deliberate and measurable."
+2. **Mechanics:** "Productive friction + feedback + identity turns work into training and telemetry."
+3. **Demo:** "You'll see those mechanics in Fix Wires."
+4. **Metrics:** "Accuracy/retries/time -> trust score -> smarter coaching and review."
+5. **Rollout:** "Pilot safely, measure outcomes, expand task types where it works."
+
+---
+
+## Two Non-Assertive but Strong Lines
+
+- "We're not claiming traditional stewardship fails -- this is a targeted option when you want more deliberate review and better signals."
+- "The game is not the point. The **telemetry** is the point -- and game mechanics are how we reliably generate it."
+
+---
+
+## Reference: What the Demo Shows
+
+### The Skeld Map
 
 - Full recreation of The Skeld (2048x1872 px), procedurally generated
 - 15 named rooms representing potential stewardship domains
@@ -92,116 +148,14 @@ Yes, dragging a wire takes longer than clicking a checkbox. That is a feature, n
 - Among Us-styled task panel with real WiresPanel game texture
 - **Left side:** Field labels (First Name, Last Name, Date of Birth, Blood Type)
 - **Right side:** Shuffled realistic patient values
-- **Drag-and-drop wires** (red, blue, yellow, pink) -- steward must deliberately connect each field to its value
-- **Wrong-match feedback:** "Wrong wires -- try again!" (forces correction, creates retry metric)
-- **"TASK COMPLETE" button** only appears on correct match (satisfaction loop)
+- **Drag-and-drop wires** (red, blue, yellow, pink)
+- **Wrong-match feedback:** "Wrong wires -- try again!"
+- **"TASK COMPLETE" button** only appears on correct match
 - **6 randomized patient records** -- different data every time
 
-### Profisee x InnerSloth Branding
+### Technical Stack
 
-- Partnership logos on main menu with animated starfield
-- "Emergency Meeting -- Hackathon 2026" subtitle
-- Authentic Among Us art style throughout
-
-### Asset Browser
-
-- 140+ cataloged Among Us game assets with search, preview, and metadata
-
----
-
-## Suggested Presentation Flow
-
-### Slide 1 -- Title
-
-**"Emergency Meeting: Gamifying Data Stewardship"**
-
-- Profisee x InnerSloth logos
-- Team: Stephen Vick, Darius Brown
-- Subtitle: "Because stewards shouldn't dread their queue"
-
-### Slide 2 -- The Decentralization Problem
-
-"As organizations scale MDM, stewardship has to move out of central IT and into the business. But business stewards don't engage with traditional UIs. Completion rates drop. Accuracy drops. The data stays dirty -- and now it's *everyone's* fault instead of no one's."
-
-Key stat to cite: industry surveys show stewardship task completion rates below 40% in decentralized models without engagement incentives.
-
-### Slide 3 -- The Gamification Thesis
-
-"What if stewardship tasks felt like gameplay instead of homework? Game mechanics -- deliberate interaction, immediate feedback, visible progress, measurable accuracy -- solve the engagement and quality problem simultaneously."
-
-Core message: **The inefficiency is worth it.** Slower per-task, but dramatically higher accuracy and engagement. The cost of poor data quality dwarfs the cost of a few extra seconds per record.
-
-### Slide 4 -- The Among Us Analogy
-
-"Among Us already solved this problem. Every crewmate has tasks. Tasks require physical presence and deliberate action. Skip a task and everyone notices. The ship doesn't survive. Sound familiar?"
-
-- Crewmate = Data Steward
-- Task = Stewardship workflow
-- Room = Data domain
-- Impostor = Bad data / unengaged steward
-- Emergency Meeting = Data quality review
-
-### Slide 5 -- Live Demo: Walk the Ship
-
-Open the Skeld map. Walk through rooms. Show room detection, collision, the HUD. Point out: "Each room is a stewardship domain. Electrical is patient data. Admin could be customer data. Navigation could be product data."
-
-### Slide 6 -- Live Demo: Complete the Task
-
-Navigate to Electrical. Click the glowing panel. Drag wires to match "First Name" to "Sarah", "Blood Type" to "AB+". Intentionally get one wrong -- show the "Wrong wires" feedback. Fix it. Complete the task.
-
-Script: "Notice what just happened. The steward had to *look* at the data. They had to make a deliberate connection. When they got it wrong, they got immediate feedback and had to try again. That retry is a data point. That correct completion is a data point. Every interaction is measurable."
-
-### Slide 7 -- The Metrics Model
-
-"Game mechanics give us something stewardship UIs never had: **per-person quality metrics.**"
-
-Present the metrics framework:
-
-- **Steward accuracy** -- first-attempt success rate
-- **Retry rate** -- learning signal; decreasing over time = training is working
-- **Completion velocity** -- expertise indicator
-- **Streak tracking** -- engagement sustainer
-- **Trust score** -- high-accuracy stewards get less reviewer oversight
-- **Reviewer override rate** -- identifies where review effort should concentrate
-
-Script: "You can't manage what you can't measure. Traditional stewardship gives you dataset-level quality. Gamified stewardship gives you *steward-level* quality. Now you know who your best stewards are, who needs training, and where to focus review."
-
-### Slide 8 -- The ROI Argument
-
-"Yes, dragging a wire takes longer than clicking a checkbox."
-
-- Checkbox: 200 records/hour, 60% accuracy
-- Gamified: 80 records/hour, 95% accuracy
-- **60% accuracy at scale = massive downstream remediation cost**
-- **95% accuracy at scale = trusted master data**
-- The throughput delta is recovered in reduced rework, fewer downstream errors, and higher steward retention
-
-### Slide 9 -- Vision: What's Next
-
-- **More rooms, more task types:** merge/split records (Reactor), golden record selection (Navigation), survivorship rules (Admin), address standardization (Communications)
-- **Leaderboards and streaks:** team-based competition across departments
-- **Adaptive difficulty:** high-accuracy stewards get harder records; struggling stewards get guided tasks
-- **Reviewer dashboard:** risk-based review queue driven by steward trust scores
-- **Profisee integration:** game tasks backed by real Profisee matching and survivorship APIs
-
-### Slide 10 -- Thank You / Q and A
-
----
-
-## Key Talking Points for the Verbal Script
-
-- **"Decentralization fails without engagement."** Pushing stewardship to business users only works if those users actually do the work. Gamification makes them want to.
-- **"Friction is a feature."** Drag-and-drop is slower than bulk-approve. That's the point. Every second of friction is a second the steward is *looking at the data.*
-- **"Every interaction is a metric."** Right, wrong, retry, time-to-complete, streak -- game mechanics produce per-steward quality data that traditional UIs cannot.
-- **"Trust scores reduce reviewer burden."** When you know which stewards are accurate, you can skip review for their work and focus reviewer time where it matters.
-- **"Stewards improve over time."** Wrong-match feedback is training. Retry rates decrease as stewards learn the domain. The game teaches while it measures.
-- **"The ship metaphor works."** Among Us tasks keep the ship running. Stewardship tasks keep the data running. Skip your tasks and the impostor (bad data) wins.
-
-## Key Stats for the Deck
-
-- 2048 x 1872 pixel map, procedurally generated from collision geometry
-- 15 rooms = 15 potential stewardship domains
-- 6 randomized patient records per session (prevents memorization)
-- 4 fields per task, drag-and-drop matching with immediate feedback
-- Per-steward metrics: accuracy, retry rate, velocity, streak, trust score
-- Zero game engine -- pure React 19 + TypeScript + SVG + Vite
+- React 19 + TypeScript + Vite
+- Procedural map generation from collision geometry
+- SVG-based drag-and-drop wiring engine
+- Zero game engine dependencies
