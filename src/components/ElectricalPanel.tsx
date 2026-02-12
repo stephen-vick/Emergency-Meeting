@@ -143,7 +143,7 @@ export function ElectricalPanelContent({ config, onClose }: ElectricalPanelConte
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
-  /* Wire: right-middle of available attribute panel → left-middle of selected attribute panel */
+  /* Wire: right-middle of available attribute panel ΓåÆ left-middle of selected attribute panel */
   const leftWireX = COLUMN_WIDTH;
   const rightWireX = COLUMN_WIDTH + WIRE_GAP;
   const wireYs = Array.from(
@@ -265,12 +265,12 @@ export function ElectricalPanelContent({ config, onClose }: ElectricalPanelConte
                 className={`electrical-attribute-slot ${dragSource ? 'drop-target' : ''} ${isLit ? 'electrical-attribute-slot-lit' : ''}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, rightIdx)}
-                aria-label={label ? `Connected: ${label}. Drop to replace.` : 'Empty slot — drop attribute here'}
+                aria-label={label ? `Connected: ${label}. Drop to replace.` : 'Empty slot ΓÇö drop attribute here'}
               >
                 {label ? (
                   <span className="electrical-attribute-label">{label}</span>
                 ) : (
-                  <span className="electrical-slot-empty">—</span>
+                  <span className="electrical-slot-empty">ΓÇö</span>
                 )}
               </div>
             );
@@ -308,7 +308,7 @@ export function ElectricalPanel({ config, onClose }: PanelModalProps) {
             onClick={onClose}
             aria-label="Close panel"
           >
-            ×
+            ├ù
           </button>
         </div>
         <ElectricalPanelContent config={config} />

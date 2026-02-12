@@ -29,6 +29,16 @@ const OUT_DIR = path.join(__dirname, '..', 'public');
 const DEBUG_DIR = path.join(OUT_DIR, 'debug-layers');
 const DEBUG = process.argv.includes('--debug');
 
+// Path to the Unity base atlas that contains Electrical (and other rooms)
+const ASSET_DIR = path.join(
+  __dirname, '..', 'assets', 'among us', 'among-us-assets-main',
+  'among-us-assets-main', 'Maps',
+);
+const BASE_ATLAS = path.join(
+  ASSET_DIR, 'Storage',
+  'Admin_Comms_Elec_Engine_Halls_Shields_Storage-sharedassets0.assets-150.png',
+);
+
 // ── Colour helpers ──────────────────────────────────────────────────────
 
 type RGB = [number, number, number];
@@ -363,6 +373,81 @@ function drawFloors(canvas: PNG): void {
   }
 }
 
+// ── Stage 2b: Real texture overlays for specific rooms ──────────────────
+
+/** Composite src onto dst with alpha blending. */
+function compositeOver(dst: PNG, src: PNG, ox: number, oy: number): void {
+  for (let sy = 0; sy < src.height; sy++) {
+    const dy = oy + sy;
+    if (dy < 0 || dy >= dst.height) continue;
+    for (let sx = 0; sx < src.width; sx++) {
+      const dx = ox + sx;
+      if (dx < 0 || dx >= dst.width) continue;
+      const si = (sy * src.width + sx) * 4;
+      const sa = src.data[si + 3] / 255;
+      if (sa === 0) continue;
+      const di = (dy * dst.width + dx) * 4;
+      const da = dst.data[di + 3] / 255;
+      const outA = sa + da * (1 - sa);
+      if (outA === 0) continue;
+      dst.data[di]     = clamp((src.data[si]     * sa + dst.data[di]     * da * (1 - sa)) / outA);
+      dst.data[di + 1] = clamp((src.data[si + 1] * sa + dst.data[di + 1] * da * (1 - sa)) / outA);
+      dst.data[di + 2] = clamp((src.data[si + 2] * sa + dst.data[di + 2] * da * (1 - sa)) / outA);
+      dst.data[di + 3] = clamp(outA * 255);
+    }
+  }
+}
+
+/**
+ * Overlay the real Unity texture for the Electrical room.
+ * The base atlas was originally placed at (0,0) so the Electrical region
+ * at the collision-rect coords can be cropped directly and composited.
+ */
+function overlayElectricalTexture(canvas: PNG): void {
+  if (!fs.existsSync(BASE_ATLAS)) {
+    console.log('    WARN: Base atlas not found, skipping Electrical texture overlay');
+    return;
+  }
+  const atlas = PNG.sync.read(fs.readFileSync(BASE_ATLAS));
+
+  // Find the Electrical collision rect
+  const elecRect = ROOM_REGION_RECTS.find(r => r.name === 'Electrical');
+  if (!elecRect) return;
+
+  // Crop the region from the atlas
+  const { x: rx, y: ry, w: rw, h: rh } = elecRect;
+  const cropped = new PNG({ width: rw, height: rh });
+  for (let py = 0; py < rh; py++) {
+    const srcY = ry + py;
+    if (srcY < 0 || srcY >= atlas.height) continue;
+    for (let px = 0; px < rw; px++) {
+      const srcX = rx + px;
+      if (srcX < 0 || srcX >= atlas.width) continue;
+      const si = (srcY * atlas.width + srcX) * 4;
+      const di = (py * rw + px) * 4;
+      cropped.data[di]     = atlas.data[si];
+      cropped.data[di + 1] = atlas.data[si + 1];
+      cropped.data[di + 2] = atlas.data[si + 2];
+      cropped.data[di + 3] = atlas.data[si + 3];
+    }
+  }
+
+  // Only composite onto walkable pixels inside the Electrical rect
+  for (let py = 0; py < rh; py++) {
+    const mapY = ry + py;
+    for (let px = 0; px < rw; px++) {
+      const mapX = rx + px;
+      if (walkMap[mapY * MAP_W + mapX] === 0) continue;
+      const si = (py * rw + px) * 4;
+      if (cropped.data[si + 3] === 0) continue;
+      setPixel(canvas, mapX, mapY,
+        cropped.data[si], cropped.data[si + 1], cropped.data[si + 2], cropped.data[si + 3]);
+    }
+  }
+
+  console.log(`    Electrical texture: cropped (${rx},${ry}) ${rw}x${rh} from atlas`);
+}
+
 // ── Stage 3: Walls with shading + trim ──────────────────────────────────
 
 function drawWalls(canvas: PNG): void {
@@ -543,6 +628,11 @@ function main(): void {
   console.log('  Stage 2: Room and corridor floors...');
   drawFloors(canvas);
   if (DEBUG) savePng('stage-2-floors.png', canvas);
+
+  // Stage 2b: Real texture overlays for specific rooms
+  console.log('  Stage 2b: Room texture overlays...');
+  overlayElectricalTexture(canvas);
+  if (DEBUG) savePng('stage-2b-textures.png', canvas);
 
   // Stage 3: Wall shading
   console.log('  Stage 3: Wall shading and trim...');

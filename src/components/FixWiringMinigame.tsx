@@ -84,7 +84,7 @@ export function FixWiringMinigame({ onComplete, onClose }: Props) {
           <h3>Fix Wiring</h3>
           <p className="fix-wiring-hint">Connect each wire to the matching color</p>
           <button type="button" className="fix-wiring-close" onClick={onClose} aria-label="Close">
-            ×
+            ├ù
           </button>
         </div>
 
@@ -156,7 +156,7 @@ export function FixWiringMinigame({ onComplete, onClose }: Props) {
         </div>
 
         {allConnected && !isCorrect && (
-          <p className="fix-wiring-wrong">Wrong connection — try again.</p>
+          <p className="fix-wiring-wrong">Wrong connection ΓÇö try again.</p>
         )}
       </div>
     </div>

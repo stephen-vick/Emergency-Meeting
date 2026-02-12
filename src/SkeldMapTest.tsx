@@ -13,8 +13,6 @@ interface Props {
   onBack: () => void;
 }
 
-type ElectricalView = 'selector' | 'patient' | 'donor' | 'product' | null;
-
 const MAP_URL = '/skeld-map.png';
 
 const SPACE_OVERLAY_URL = '/space-overlay.png';
@@ -40,6 +38,15 @@ const HIT_HH = 24; // half-height
 // Spawn in Cafeteria (center of the large room in the upper-right area)
 const SPAWN_X = 1250;
 const SPAWN_Y = 220;
+
+// ── Interactive objects on the map ──────────────────────────────
+// Electrical panel: wall-mounted box the player clicks to open the mini-game.
+// Positioned on the back (top) wall of the Electrical room.
+const ELEC_PANEL_X = 545;
+const ELEC_PANEL_Y = 730;
+const ELEC_PANEL_W = 40;
+const ELEC_PANEL_H = 48;
+const ELEC_INTERACT_RANGE = 90; // px – how close the player must be to click
 
 // ── Room regions for HUD display ────────────────────────────────
 // Imported from shared/skeldGeometry.ts to keep runtime room detection aligned
@@ -67,7 +74,6 @@ export default function SkeldMapTest({ onBack }: Props) {
   const [walkFrame, setWalkFrame] = useState(0);
   const [showElectricalPanels, setShowElectricalPanels] = useState(false);
   const keysRef = useRef(new Set<string>());
-  const prevRoomRef = useRef<string | null>(null);
   const posRef = useRef({ x: SPAWN_X, y: SPAWN_Y });
   const rafRef = useRef<number>(0);
   const walkTimerRef = useRef<number>(0);
@@ -184,14 +190,6 @@ export default function SkeldMapTest({ onBack }: Props) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (key === 'e') {
-        const room = getCurrentRoom(posRef.current.x, posRef.current.y);
-        if (room === 'Electrical') {
-          e.preventDefault();
-          setShowElectricalPanels((prev) => !prev);
-          return;
-        }
-      }
       if (
         ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
       ) {
@@ -241,14 +239,17 @@ export default function SkeldMapTest({ onBack }: Props) {
   const currentSprite = isMoving ? SPRITE_WALK[walkFrame] : SPRITE_IDLE;
   const currentRoom = getCurrentRoom(pos.x, pos.y);
 
-  // When crew member enters Electrical, present the panel selector
-  useEffect(() => {
-    const prev = prevRoomRef.current;
-    prevRoomRef.current = currentRoom ?? null;
-    if (prev !== 'Electrical' && currentRoom === 'Electrical') {
-      setShowElectricalPanels(true);
-    }
-  }, [currentRoom]);
+  // Distance from player to the electrical panel centre
+  const panelCX = ELEC_PANEL_X + ELEC_PANEL_W / 2;
+  const panelCY = ELEC_PANEL_Y + ELEC_PANEL_H / 2;
+  const distToPanel = Math.sqrt(
+    (pos.x - panelCX) ** 2 + (pos.y - panelCY) ** 2,
+  );
+  const nearPanel = distToPanel < ELEC_INTERACT_RANGE;
+
+  const handlePanelClick = useCallback(() => {
+    if (nearPanel) setShowElectricalPanels(true);
+  }, [nearPanel]);
 
   return (
     <div className="skeld-viewport">
@@ -273,6 +274,23 @@ export default function SkeldMapTest({ onBack }: Props) {
             backgroundImage: `url(${SPACE_OVERLAY_URL})`,
           }}
         />
+
+        {/* Interactive: Electrical panel box */}
+        <div
+          className={`map-interactive-panel${nearPanel ? ' map-interactive-panel--near' : ''}`}
+          style={{
+            left: ELEC_PANEL_X,
+            top: ELEC_PANEL_Y,
+            width: ELEC_PANEL_W,
+            height: ELEC_PANEL_H,
+          }}
+          role="button"
+          tabIndex={nearPanel ? 0 : -1}
+          aria-label="Electrical panel — click to open"
+          onClick={handlePanelClick}
+        >
+          <span className="panel-icon">&#9889;</span>
+        </div>
 
         {/* Player character */}
         <div className="skeld-player" style={playerStyle}>
@@ -300,8 +318,8 @@ export default function SkeldMapTest({ onBack }: Props) {
           )}
           <div className="hud-hint">
             WASD or Arrow Keys to move
-            {currentRoom === 'Electrical' && !showElectricalPanels && (
-              <span className="hud-task-hint"> · Press E to open electrical panels</span>
+            {nearPanel && !showElectricalPanels && (
+              <span className="hud-task-hint"> · Click the panel to open electrical</span>
             )}
           </div>
           <div className="hud-coords">

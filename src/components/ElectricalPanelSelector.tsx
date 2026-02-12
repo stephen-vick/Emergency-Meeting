@@ -34,7 +34,7 @@ export function ElectricalPanelSelector({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="electrical-cabinets-header">
-          <h3>Electrical Room — Panels</h3>
+          <h3>Electrical Room ΓÇö Panels</h3>
           <p className="electrical-selector-subtitle">
             Select a panel to open its door
           </p>
@@ -44,7 +44,7 @@ export function ElectricalPanelSelector({ onClose }: Props) {
             onClick={onClose}
             aria-label="Close"
           >
-            ×
+            ├ù
           </button>
         </div>
 

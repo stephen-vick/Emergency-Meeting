@@ -1,4 +1,4 @@
-/* ── Reset & Base ─────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Reset & Base ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 *,
 *::before,
@@ -48,7 +48,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Loading Screen ──────────────────────────────────────────── */
+/* ΓöÇΓöÇ Loading Screen ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .loading-screen {
   display: flex;
@@ -83,7 +83,7 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* ── App Layout ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ App Layout ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .app {
   display: flex;
@@ -128,7 +128,7 @@ body {
   overflow: hidden;
 }
 
-/* ── Category Nav ────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Category Nav ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .category-nav {
   width: 220px;
@@ -210,7 +210,7 @@ body {
   border-radius: 10px;
 }
 
-/* ── Main Content ────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Main Content ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .main-content {
   flex: 1;
@@ -219,7 +219,7 @@ body {
   padding: 16px 20px;
 }
 
-/* ── Search Bar ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Search Bar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .search-bar {
   display: flex;
@@ -285,7 +285,7 @@ body {
   white-space: nowrap;
 }
 
-/* ── Asset Grid ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Asset Grid ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .asset-grid {
   display: grid;
@@ -293,7 +293,7 @@ body {
   gap: 12px;
 }
 
-/* ── Asset Card ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Asset Card ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .asset-card {
   background: var(--bg-card);
@@ -409,7 +409,7 @@ body {
   font-weight: 500;
 }
 
-/* ── Empty State ─────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Empty State ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .empty-state {
   display: flex;
@@ -426,7 +426,7 @@ body {
   opacity: 0.5;
 }
 
-/* ── Modal ───────────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .modal-overlay {
   position: fixed;
@@ -620,7 +620,7 @@ body {
   background: var(--success);
 }
 
-/* ── Skeld View ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Skeld View ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .skeld-view {
   /* Container for curated Skeld view */
@@ -667,7 +667,7 @@ body {
   font-weight: 400;
 }
 
-/* ── Scrollbar ───────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Scrollbar ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 ::-webkit-scrollbar {
   width: 8px;
@@ -687,7 +687,7 @@ body {
   background: var(--border-light);
 }
 
-/* ── Responsive ──────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Responsive ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 @media (max-width: 768px) {
   .category-nav {
@@ -714,7 +714,7 @@ body {
   }
 }
 
-/* ── Back Button (shared) ────────────────────────────────────── */
+/* ΓöÇΓöÇ Back Button (shared) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .back-button {
   display: inline-flex;
@@ -736,7 +736,7 @@ body {
   color: var(--text-primary);
 }
 
-/* ── Main Menu ───────────────────────────────────────────────── */
+/* ΓöÇΓöÇ Main Menu ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .main-menu {
   position: relative;
@@ -950,7 +950,7 @@ body {
   }
 }
 
-/* ── Skeld Map Test ──────────────────────────────────────────── */
+/* ΓöÇΓöÇ Skeld Map Test ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .skeld-viewport {
   position: fixed;
@@ -974,7 +974,7 @@ body {
   image-rendering: pixelated;
 }
 
-/* Dark space overlay – covers exterior areas outside the ship */
+/* Dark space overlay ΓÇô covers exterior areas outside the ship */
 .skeld-space-overlay {
   position: absolute;
   top: 0;
@@ -1085,7 +1085,7 @@ body {
   font-weight: 600;
 }
 
-/* ── Electrical Panel (Product / Patient / Donor) ───────────────── */
+/* ΓöÇΓöÇ Electrical Panel (Product / Patient / Donor) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */
 
 .electrical-panel-overlay {
   position: fixed;
@@ -1280,7 +1280,7 @@ body {
   stroke-width: 1;
 }
 
-/* ── Electrical Panel Selector (three cabinet panels with doors) ── */
+/* ΓöÇΓöÇ Electrical Panel Selector (three cabinet panels with doors) ΓöÇΓöÇ */
 
 .electrical-selector-overlay {
   /* uses .electrical-panel-overlay base */
@@ -1295,7 +1295,7 @@ body {
   max-width: min(calc(100vw - 32px), 960px);
 }
 
-/* 2×2 grid: row1 Patient | Donor, row2 Product | Complete Task */
+/* 2├ù2 grid: row1 Patient | Donor, row2 Product | Complete Task */
 .electrical-cabinets {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1474,3 +1474,50 @@ body {
   color: #ff5252;
 }
 
+/* ── Interactive map objects ──────────────────────────────────────── */
+
+.map-interactive-panel {
+  position: absolute;
+  border: 2px solid rgba(200, 200, 80, 0.4);
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(30, 30, 30, 0.85),
+    rgba(30, 30, 30, 0.85) 4px,
+    rgba(200, 180, 40, 0.55) 4px,
+    rgba(200, 180, 40, 0.55) 8px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: opacity 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  z-index: 5;
+}
+
+.map-interactive-panel .panel-icon {
+  font-size: 20px;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.6));
+}
+
+.map-interactive-panel--near {
+  pointer-events: auto;
+  cursor: pointer;
+  opacity: 1;
+  border-color: rgba(245, 200, 60, 0.9);
+  box-shadow:
+    0 0 12px rgba(245, 200, 60, 0.5),
+    0 0 24px rgba(245, 200, 60, 0.2);
+  animation: panel-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes panel-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(245, 200, 60, 0.5), 0 0 24px rgba(245, 200, 60, 0.2); }
+  50% { box-shadow: 0 0 18px rgba(245, 200, 60, 0.7), 0 0 36px rgba(245, 200, 60, 0.35); }
+}
+
+.hud-task-hint {
+  color: #f5c83c;
+  font-weight: 600;
+}
