@@ -1,635 +1,566 @@
 /**
- * Build a composite Skeld map from Unity-extracted sprite layers.
+ * Build a Skeld map from collision geometry with procedural space-station textures.
+ *
+ * Instead of layering Unity sprites (which introduces alignment drift), this
+ * generates the map directly from the room / corridor rectangles defined in
+ * shared/skeldGeometry.ts.  The walkable area, visual floors, and collision
+ * mask are therefore pixel-perfect by construction.
  *
  * Usage:
  *   tsx scripts/build-composite-map.ts
- *   tsx scripts/build-composite-map.ts --debug
- *   tsx scripts/build-composite-map.ts --report
- *   tsx scripts/build-composite-map.ts --include-optional=compLabAdmin,compLabGreenhouse,lifeSupportTerminal
+ *   tsx scripts/build-composite-map.ts --debug   (saves intermediate stage images)
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { PNG } from 'pngjs';
-import { MAP_W as CANVAS_W, MAP_H as CANVAS_H, ROOM_REGION_RECTS, WALKABLE_ROOM_RECTS, CORRIDOR_RECTS, type Rect } from '../shared/skeldGeometry';
+import {
+  MAP_W,
+  MAP_H,
+  ROOM_REGION_RECTS,
+  WALKABLE_ROOM_RECTS,
+  CORRIDOR_RECTS,
+  type Rect,
+  type NamedRect,
+} from '../shared/skeldGeometry';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '..');
-const OUT_DIR = path.resolve(PROJECT_ROOT, 'public');
+const OUT_DIR = path.join(__dirname, '..', 'public');
 const DEBUG_DIR = path.join(OUT_DIR, 'debug-layers');
+const DEBUG = process.argv.includes('--debug');
 
-fs.mkdirSync(OUT_DIR, { recursive: true });
+// ── Colour helpers ──────────────────────────────────────────────────────
 
-// Unity-extracted game textures folder.
-const MAPS_DIR = path.join(
-  PROJECT_ROOT,
-  'assets',
-  'among us',
-  'among-us-assets-main',
-  'among-us-assets-main',
-  'Maps',
-);
+type RGB = [number, number, number];
 
-const FLOOR_R = 43;
-const FLOOR_G = 43;
-const FLOOR_B = 61;
-
-type StageName = 'base' | 'walls' | 'roomInteriors' | 'foreground' | 'optional';
-
-interface CropRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+function clamp(v: number): number {
+  return Math.max(0, Math.min(255, Math.round(v)));
 }
 
-interface LayerConfig {
-  id: string;
-  stage: StageName;
-  label: string;
-  file: string;
-  x: number;
-  y: number;
-  scale: number;
-  crop?: CropRect;
-  enabled: boolean;
-  roomName?: string;
-  notes?: string;
+function lerpRGB(a: RGB, b: RGB, t: number): RGB {
+  return [
+    clamp(a[0] + (b[0] - a[0]) * t),
+    clamp(a[1] + (b[1] - a[1]) * t),
+    clamp(a[2] + (b[2] - a[2]) * t),
+  ];
 }
 
-interface RenderedLayer {
-  layer: LayerConfig;
-  rect: Rect;
+function brighten(c: RGB, amt: number): RGB {
+  return [clamp(c[0] + amt), clamp(c[1] + amt), clamp(c[2] + amt)];
 }
 
-const STAGE_ORDER: StageName[] = ['base', 'walls', 'roomInteriors', 'foreground', 'optional'];
-
-const LAYER_STACK: Record<StageName, LayerConfig[]> = {
-  base: [
-    {
-      id: 'baseMap',
-      stage: 'base',
-      label: 'Base Map',
-      file: 'Storage/Admin_Comms_Elec_Engine_Halls_Shields_Storage-sharedassets0.assets-150.png',
-      x: 0,
-      y: 0,
-      scale: 1,
-      enabled: true,
-      notes: 'Primary floor/corridor atlas.',
-    },
-  ],
-  walls: [
-    {
-      id: 'cafeteriaWalls',
-      stage: 'walls',
-      label: 'Cafeteria Walls',
-      file: 'Cafeteria/cafeteriaWalls-sharedassets0.assets-152.png',
-      x: 430,
-      y: 0,
-      scale: 1,
-      enabled: true,
-      notes: 'Adds cafeteria wall panels and top corridor details.',
-    },
-  ],
-  roomInteriors: [
-    {
-      id: 'upperEngine',
-      stage: 'roomInteriors',
-      label: 'Upper Engine',
-      roomName: 'Upper Engine',
-      file: 'Engine-sharedassets0.assets-147.png',
-      x: 100,
-      y: 180,
-      scale: 0.70,
-      crop: { x: 0, y: 0, w: 500, h: 515 },
-      enabled: true,
-      notes: 'Top engine section; crop height increased to fill 360px target height.',
-    },
-    {
-      id: 'lowerEngine',
-      stage: 'roomInteriors',
-      label: 'Lower Engine',
-      roomName: 'Lower Engine',
-      file: 'Engine-sharedassets0.assets-147.png',
-      x: 100,
-      y: 1100,
-      scale: 0.70,
-      crop: { x: 0, y: 514, w: 500, h: 510 },
-      enabled: true,
-      notes: 'Bottom engine section of stacked texture to match Lower Engine geometry.',
-    },
-    {
-      id: 'cafeteria',
-      stage: 'roomInteriors',
-      label: 'Cafeteria',
-      roomName: 'Cafeteria',
-      file: 'Cafeteria/Cafeteria-sharedassets0.assets-210.png',
-      x: 635,
-      y: 5,
-      scale: 0.70,
-      enabled: true,
-      notes: 'Scaled to fill expanded cafeteria collision rects (union ≈650,20 to 1310,680).',
-    },
-    {
-      id: 'weapons',
-      stage: 'roomInteriors',
-      label: 'Weapons',
-      roomName: 'Weapons',
-      file: 'Weapons-sharedassets0.assets-201.png',
-      x: 1350,
-      y: 10,
-      scale: 0.70,
-      crop: { x: 30, y: 0, w: 490, h: 490 },
-      enabled: true,
-      notes: 'Tight crop of turret room, offset 30px left to trim pipe artifacts, match Weapons target.',
-    },
-    {
-      id: 'navigation',
-      stage: 'roomInteriors',
-      label: 'Navigation',
-      roomName: 'Navigation',
-      file: 'Navigation-sharedassets0.assets-160.png',
-      x: 1710,
-      y: 1260,
-      scale: 0.78,
-      crop: { x: 0, y: 350, w: 344, h: 380 },
-      enabled: true,
-      notes: 'Tight cockpit crop aligned to Navigation bounds.',
-    },
-    {
-      id: 'medBay',
-      stage: 'roomInteriors',
-      label: 'MedBay',
-      roomName: 'MedBay',
-      file: 'MedBay-sharedassets0.assets-110.png',
-      x: 440,
-      y: 180,
-      scale: 0.62,
-      crop: { x: 0, y: 0, w: 525, h: 480 },
-      enabled: true,
-      notes: 'Offset outward 10px so sprite walls align with collision edges; crop expanded to match (440,180,325,295) target.',
-    },
-    {
-      id: 'o2',
-      stage: 'roomInteriors',
-      label: 'O2',
-      roomName: 'O2',
-      file: 'room_O2-sharedassets0.assets-93.png',
-      x: 1770,
-      y: 810,
-      scale: 0.31,
-      crop: { x: 0, y: 0, w: 717, h: 770 },
-      enabled: true,
-      notes: 'Top crop isolates O2 room geometry from extra content.',
-    },
-    {
-      id: 'security',
-      stage: 'roomInteriors',
-      label: 'Security',
-      roomName: 'Security',
-      file: 'Security/Security-sharedassets0.assets-203.png',
-      x: 290,
-      y: 700,
-      scale: 0.91,
-      crop: { x: 0, y: 0, w: 264, h: 280 },
-      enabled: true,
-      notes: 'Crops out lower monitor animation frames.',
-    },
-    {
-      id: 'storage',
-      stage: 'roomInteriors',
-      label: 'Storage',
-      roomName: 'Storage',
-      file: 'Storage/room_storage-sharedassets0.assets-98.png',
-      x: 560,
-      y: 1070,
-      scale: 0.70,
-      enabled: true,
-      notes: 'Aligned to Storage target rect x position.',
-    },
-    {
-      id: 'communications',
-      stage: 'roomInteriors',
-      label: 'Communications',
-      roomName: 'Communications',
-      file: 'room_broadcast-sharedassets0.assets-57.png',
-      x: 700,
-      y: 1260,
-      scale: 0.80,
-      crop: { x: 0, y: 0, w: 423, h: 400 },
-      enabled: true,
-      notes: 'Tighter crop aligned to Communications target room.',
-    },
-    {
-      id: 'admin',
-      stage: 'roomInteriors',
-      label: 'Admin',
-      roomName: 'Admin',
-      file: 'compLabGreenHouseAdminWalls-sharedassets0.assets-67.png',
-      x: 1005,
-      y: 535,
-      scale: 0.93,
-      crop: { x: 0, y: 870, w: 390, h: 355 },
-      enabled: true,
-      notes: 'Admin room interior; offset 5px to align walls with collision rect (1010,540,355,310).',
-    },
-  ],
-  foreground: [
-    {
-      id: 'weaponsDetail',
-      stage: 'foreground',
-      label: 'Weapons Detail',
-      roomName: 'Weapons',
-      file: 'room_weapon-sharedassets0.assets-80.png',
-      x: 1350,
-      y: 10,
-      scale: 0.60,
-      enabled: true,
-      notes: 'Asteroid-shooter interior pass.',
-    },
-    {
-      id: 'dropshipTop',
-      stage: 'foreground',
-      label: 'Dropship Top',
-      roomName: 'Cafeteria',
-      file: 'dropshipTop-sharedassets0.assets-134.png',
-      x: 850,
-      y: -10,
-      scale: 0.60,
-      enabled: false,
-      notes: 'Disabled by default to avoid covering cafeteria tables; enable via --include-optional=dropshipTop when needed.',
-    },
-  ],
-  optional: [
-    {
-      id: 'hull',
-      stage: 'optional',
-      label: 'Hull (Exterior Sprite)',
-      file: 'Hull-sharedassets0.assets-159.png',
-      x: 120,
-      y: 144,
-      scale: 1,
-      enabled: false,
-      notes: 'Exterior ship art; disabled by default.',
-    },
-    // compLabAdmin moved to roomInteriors stage as 'admin' layer
-    {
-      id: 'compLabGreenhouse',
-      stage: 'optional',
-      label: 'CompLab Greenhouse Slice',
-      roomName: 'O2',
-      file: 'compLabGreenHouseAdminWalls-sharedassets0.assets-67.png',
-      x: 1770,
-      y: 810,
-      scale: 0.42,
-      crop: { x: 500, y: 760, w: 520, h: 560 },
-      enabled: false,
-      notes: 'Greenhouse floor slice from compLab sheet aligned to O2 room.',
-    },
-    {
-      id: 'lifeSupportTerminal',
-      stage: 'optional',
-      label: 'LifeSupport Terminal Slice',
-      roomName: 'O2',
-      file: 'LifeSupport-sharedassets0.assets-119.png',
-      x: 1760,
-      y: 760,
-      scale: 0.50,
-      crop: { x: 230, y: 0, w: 430, h: 360 },
-      enabled: false,
-      notes: 'Terminal/equipment portion only; avoids barrel scatter flooding.',
-    },
-  ],
-};
-
-const argv = process.argv.slice(2);
-const DEBUG = argv.includes('--debug');
-const REPORT = argv.includes('--report');
-const includeOptionalArg = argv.find((arg) => arg.startsWith('--include-optional='));
-const includeOptional = new Set(
-  includeOptionalArg
-    ? includeOptionalArg.split('=')[1].split(',').map((id) => id.trim()).filter(Boolean)
-    : [],
-);
-
-function loadPng(filePath: string): PNG {
-  return PNG.sync.read(fs.readFileSync(filePath));
+function darken(c: RGB, amt: number): RGB {
+  return brighten(c, -amt);
 }
 
-function clonePng(src: PNG): PNG {
-  const dst = new PNG({ width: src.width, height: src.height });
-  src.data.copy(dst.data);
-  return dst;
+// Simple deterministic hash for pseudo-random variation
+function hash(x: number, y: number): number {
+  let h = (x * 374761393 + y * 668265263) >>> 0;
+  h = ((h ^ (h >> 13)) * 1274126177) >>> 0;
+  return (h ^ (h >> 16)) >>> 0;
 }
 
-function scalePng(src: PNG, dstW: number, dstH: number): PNG {
-  const dst = new PNG({ width: dstW, height: dstH });
-  const xRatio = src.width / dstW;
-  const yRatio = src.height / dstH;
-
-  for (let y = 0; y < dstH; y++) {
-    for (let x = 0; x < dstW; x++) {
-      const srcX = x * xRatio;
-      const srcY = y * yRatio;
-      const x0 = Math.floor(srcX);
-      const y0 = Math.floor(srcY);
-      const x1 = Math.min(x0 + 1, src.width - 1);
-      const y1 = Math.min(y0 + 1, src.height - 1);
-      const fx = srcX - x0;
-      const fy = srcY - y0;
-
-      const dIdx = (y * dstW + x) * 4;
-      for (let c = 0; c < 4; c++) {
-        const v00 = src.data[(y0 * src.width + x0) * 4 + c];
-        const v10 = src.data[(y0 * src.width + x1) * 4 + c];
-        const v01 = src.data[(y1 * src.width + x0) * 4 + c];
-        const v11 = src.data[(y1 * src.width + x1) * 4 + c];
-        const top = v00 + (v10 - v00) * fx;
-        const bot = v01 + (v11 - v01) * fx;
-        dst.data[dIdx + c] = Math.round(top + (bot - top) * fy);
-      }
-    }
-  }
-  return dst;
-}
-
-function compositeOver(dst: PNG, src: PNG, ox: number, oy: number): void {
-  for (let sy = 0; sy < src.height; sy++) {
-    const dy = oy + sy;
-    if (dy < 0 || dy >= dst.height) continue;
-    for (let sx = 0; sx < src.width; sx++) {
-      const dx = ox + sx;
-      if (dx < 0 || dx >= dst.width) continue;
-
-      const sIdx = (sy * src.width + sx) * 4;
-      const dIdx = (dy * dst.width + dx) * 4;
-      const sa = src.data[sIdx + 3] / 255;
-      if (sa === 0) continue;
-
-      const da = dst.data[dIdx + 3] / 255;
-      const outA = sa + da * (1 - sa);
-      if (outA === 0) continue;
-
-      dst.data[dIdx] = Math.round((src.data[sIdx] * sa + dst.data[dIdx] * da * (1 - sa)) / outA);
-      dst.data[dIdx + 1] = Math.round((src.data[sIdx + 1] * sa + dst.data[dIdx + 1] * da * (1 - sa)) / outA);
-      dst.data[dIdx + 2] = Math.round((src.data[sIdx + 2] * sa + dst.data[dIdx + 2] * da * (1 - sa)) / outA);
-      dst.data[dIdx + 3] = Math.round(outA * 255);
-    }
-  }
-}
-
-function cropPng(src: PNG, crop: CropRect): PNG {
-  const cx = Math.max(0, crop.x);
-  const cy = Math.max(0, crop.y);
-  const ex = Math.min(src.width, crop.x + crop.w);
-  const ey = Math.min(src.height, crop.y + crop.h);
-  const cw = Math.max(0, ex - cx);
-  const ch = Math.max(0, ey - cy);
-  const dst = new PNG({ width: cw, height: ch });
-
-  for (let y = 0; y < ch; y++) {
-    for (let x = 0; x < cw; x++) {
-      const sIdx = ((cy + y) * src.width + (cx + x)) * 4;
-      const dIdx = (y * cw + x) * 4;
-      dst.data[dIdx] = src.data[sIdx];
-      dst.data[dIdx + 1] = src.data[sIdx + 1];
-      dst.data[dIdx + 2] = src.data[sIdx + 2];
-      dst.data[dIdx + 3] = src.data[sIdx + 3];
-    }
-  }
-
-  return dst;
-}
-
-function contentBounds(img: PNG): Rect {
-  let minX = img.width;
-  let minY = img.height;
-  let maxX = -1;
-  let maxY = -1;
-  for (let y = 0; y < img.height; y++) {
-    for (let x = 0; x < img.width; x++) {
-      if (img.data[(y * img.width + x) * 4 + 3] > 0) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-  if (maxX < minX || maxY < minY) return { x: 0, y: 0, w: 0, h: 0 };
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
-}
+// ── Canvas helpers ──────────────────────────────────────────────────────
 
 function createCanvas(): PNG {
-  const canvas = new PNG({ width: CANVAS_W, height: CANVAS_H });
-  for (let i = 0; i < CANVAS_W * CANVAS_H; i++) {
-    const idx = i * 4;
-    canvas.data[idx] = FLOOR_R;
-    canvas.data[idx + 1] = FLOOR_G;
-    canvas.data[idx + 2] = FLOOR_B;
-    canvas.data[idx + 3] = 255;
-  }
-  return canvas;
+  return new PNG({ width: MAP_W, height: MAP_H, filterType: -1 });
 }
 
-function getFilePath(layer: LayerConfig): string {
-  return path.join(MAPS_DIR, layer.file);
+function setPixel(png: PNG, x: number, y: number, r: number, g: number, b: number, a = 255): void {
+  if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return;
+  const idx = (y * MAP_W + x) * 4;
+  png.data[idx] = clamp(r);
+  png.data[idx + 1] = clamp(g);
+  png.data[idx + 2] = clamp(b);
+  png.data[idx + 3] = clamp(a);
 }
 
-function shouldRenderLayer(layer: LayerConfig): boolean {
-  // CLI --include-optional can force-enable any layer by id
-  if (includeOptional.has(layer.id)) return true;
-  if (!layer.enabled) return false;
-  return true;
-}
-
-function saveDebugImage(fileName: string, png: PNG): void {
-  fs.mkdirSync(DEBUG_DIR, { recursive: true });
-  fs.writeFileSync(path.join(DEBUG_DIR, fileName), PNG.sync.write(png));
-}
-
-function saveDebugLayer(layer: LayerConfig, src: PNG): void {
-  const canvas = createCanvas();
-  compositeOver(canvas, src, layer.x, layer.y);
-  const safeId = layer.id.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-  saveDebugImage(`layer-${safeId}.png`, canvas);
-}
-
-function saveDebugStage(stageIndex: number, stage: StageName, canvas: PNG): void {
-  const safeStage = stage.toLowerCase();
-  saveDebugImage(`stage-${stageIndex + 1}-${safeStage}.png`, clonePng(canvas));
-}
-
-function renderLayer(layer: LayerConfig): { image: PNG; rect: Rect } | null {
-  const filePath = getFilePath(layer);
-  if (!fs.existsSync(filePath)) {
-    console.warn(`  SKIP: ${layer.id} missing (${layer.file})`);
-    return null;
-  }
-
-  let src = loadPng(filePath);
-  console.log(`  ${layer.id}: ${src.width}x${src.height} (${layer.file})`);
-
-  if (layer.crop) {
-    src = cropPng(src, layer.crop);
-    console.log(
-      `    crop (${layer.crop.x},${layer.crop.y}) ${layer.crop.w}x${layer.crop.h} -> ${src.width}x${src.height}`,
-    );
-  }
-
-  const bounds = contentBounds(src);
-  if (bounds.w > 0 && bounds.h > 0 && (bounds.x > 2 || bounds.y > 2 || bounds.w < src.width - 4 || bounds.h < src.height - 4)) {
-    src = cropPng(src, { x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h });
-    console.log(`    auto-crop -> ${src.width}x${src.height}`);
-  }
-
-  if (layer.scale !== 1) {
-    const scaledW = Math.round(src.width * layer.scale);
-    const scaledH = Math.round(src.height * layer.scale);
-    if (scaledW < 1 || scaledH < 1) {
-      console.warn(`    SKIP: scaled size too small (${scaledW}x${scaledH})`);
-      return null;
+function fillRect(png: PNG, rx: number, ry: number, rw: number, rh: number, r: number, g: number, b: number, a = 255): void {
+  for (let y = ry; y < ry + rh; y++) {
+    for (let x = rx; x < rx + rw; x++) {
+      setPixel(png, x, y, r, g, b, a);
     }
-    src = scalePng(src, scaledW, scaledH);
-    console.log(`    scale ${layer.scale} -> ${scaledW}x${scaledH}`);
   }
-
-  return {
-    image: src,
-    rect: { x: layer.x, y: layer.y, w: src.width, h: src.height },
-  };
 }
 
-function area(rect: Rect): number {
-  return rect.w * rect.h;
+function savePng(name: string, png: PNG): void {
+  const p = path.join(DEBUG_DIR, name);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, PNG.sync.write(png));
 }
 
-function intersectRect(a: Rect, b: Rect): Rect | null {
-  const x1 = Math.max(a.x, b.x);
-  const y1 = Math.max(a.y, b.y);
-  const x2 = Math.min(a.x + a.w, b.x + b.w);
-  const y2 = Math.min(a.y + a.h, b.y + b.h);
-  if (x2 <= x1 || y2 <= y1) return null;
-  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+// ── Room style definitions ──────────────────────────────────────────────
+
+type PatternFn = 'checkered' | 'grid' | 'grating' | 'diamond' | 'hex' | 'plating';
+
+interface RoomStyle {
+  floor: RGB;
+  floorAlt: RGB;
+  trim: RGB;           // wall-side accent colour
+  pattern: PatternFn;
+  tileSize: number;
 }
 
-function unionByRoomName(): Map<string, Rect> {
-  const map = new Map<string, Rect>();
-  for (const room of ROOM_REGION_RECTS) {
-    const existing = map.get(room.name);
-    if (!existing) {
-      map.set(room.name, { x: room.x, y: room.y, w: room.w, h: room.h });
-      continue;
+const ROOM_STYLES: Record<string, RoomStyle> = {
+  Cafeteria:      { floor: [178, 176, 166], floorAlt: [162, 160, 150], trim: [200, 120, 130], pattern: 'checkered', tileSize: 28 },
+  Weapons:        { floor: [128, 136, 108], floorAlt: [116, 124, 98],  trim: [170, 180, 120], pattern: 'grid',      tileSize: 22 },
+  Navigation:     { floor: [82, 102, 142],  floorAlt: [72, 92, 128],   trim: [100, 140, 200], pattern: 'diamond',   tileSize: 20 },
+  O2:             { floor: [115, 152, 115], floorAlt: [104, 138, 104], trim: [100, 190, 100], pattern: 'hex',       tileSize: 24 },
+  Reactor:        { floor: [152, 92, 92],   floorAlt: [138, 82, 82],   trim: [220, 80, 80],   pattern: 'grating',   tileSize: 18 },
+  'Upper Engine': { floor: [88, 98, 108],   floorAlt: [76, 86, 96],    trim: [120, 140, 170], pattern: 'grating',   tileSize: 16 },
+  'Lower Engine': { floor: [88, 98, 108],   floorAlt: [76, 86, 96],    trim: [120, 140, 170], pattern: 'grating',   tileSize: 16 },
+  Security:       { floor: [68, 73, 80],    floorAlt: [58, 63, 70],    trim: [110, 110, 130], pattern: 'plating',   tileSize: 18 },
+  MedBay:         { floor: [135, 172, 182], floorAlt: [122, 158, 168], trim: [100, 200, 220], pattern: 'checkered', tileSize: 22 },
+  Electrical:     { floor: [142, 148, 98],  floorAlt: [130, 136, 88],  trim: [200, 200, 80],  pattern: 'grid',      tileSize: 20 },
+  Storage:        { floor: [138, 118, 98],  floorAlt: [126, 108, 88],  trim: [180, 150, 110], pattern: 'plating',   tileSize: 24 },
+  Admin:          { floor: [125, 146, 125], floorAlt: [114, 133, 114], trim: [130, 180, 130], pattern: 'diamond',   tileSize: 18 },
+  Shields:        { floor: [98, 108, 158],  floorAlt: [86, 96, 144],   trim: [120, 130, 210], pattern: 'hex',       tileSize: 22 },
+  Communications: { floor: [98, 133, 133],  floorAlt: [88, 120, 120],  trim: [80, 180, 180],  pattern: 'grid',      tileSize: 20 },
+};
+
+const CORRIDOR_STYLE: RoomStyle = {
+  floor: [130, 130, 136], floorAlt: [120, 120, 126], trim: [155, 155, 165], pattern: 'grid', tileSize: 28,
+};
+
+// ── Wall / space colours ────────────────────────────────────────────────
+
+const SPACE_BG: RGB = [12, 14, 22];
+const WALL_OUTER: RGB = [35, 38, 46];
+const WALL_MID: RGB = [50, 54, 64];
+const WALL_INNER: RGB = [68, 72, 84];
+const WALL_THICKNESS = 8;
+
+// ── Floor pattern generators ────────────────────────────────────────────
+
+function patternColor(style: RoomStyle, px: number, py: number): RGB {
+  const { floor, floorAlt, pattern, tileSize } = style;
+  const ts = tileSize;
+
+  // Small pseudo-random variation to avoid flat look
+  const noise = ((hash(px, py) & 7) - 3); // -3 to +4
+
+  let base: RGB;
+
+  switch (pattern) {
+    case 'checkered': {
+      const cx = Math.floor(px / ts) & 1;
+      const cy = Math.floor(py / ts) & 1;
+      base = (cx ^ cy) ? floor : floorAlt;
+      break;
     }
-    const minX = Math.min(existing.x, room.x);
-    const minY = Math.min(existing.y, room.y);
-    const maxX = Math.max(existing.x + existing.w, room.x + room.w);
-    const maxY = Math.max(existing.y + existing.h, room.y + room.h);
-    map.set(room.name, { x: minX, y: minY, w: maxX - minX, h: maxY - minY });
-  }
-  return map;
-}
-
-function printAlignmentReport(renderedLayers: RenderedLayer[]): void {
-  const targetByRoom = unionByRoomName();
-  const reportLayers = renderedLayers.filter((entry) => !!entry.layer.roomName);
-
-  console.log('\nAlignment report (room-mapped layers):');
-  for (const { layer, rect } of reportLayers) {
-    const target = targetByRoom.get(layer.roomName!);
-    if (!target) {
-      console.log(`  ${layer.id}: no target room found for "${layer.roomName}"`);
-      continue;
+    case 'grid': {
+      const gx = px % ts;
+      const gy = py % ts;
+      if (gx === 0 || gy === 0) {
+        base = darken(floor, 20);
+      } else if (gx === 1 || gy === 1) {
+        base = brighten(floor, 6);
+      } else {
+        base = floor;
+      }
+      break;
     }
-
-    const overlap = intersectRect(rect, target);
-    const overlapArea = overlap ? area(overlap) : 0;
-    const layerArea = area(rect);
-    const overlapRatio = layerArea > 0 ? overlapArea / layerArea : 0;
-    const outOfBoundsRatio = 1 - overlapRatio;
-    console.log(
-      `  ${layer.id}: bbox=(${rect.x},${rect.y},${rect.w},${rect.h}) ` +
-        `target=(${target.x},${target.y},${target.w},${target.h}) ` +
-        `overlap=${overlapRatio.toFixed(3)} oob=${outOfBoundsRatio.toFixed(3)}`,
-    );
+    case 'grating': {
+      const gy = py % ts;
+      if (gy <= 1) {
+        base = darken(floorAlt, 10);
+      } else if (gy === ts - 1) {
+        base = brighten(floor, 12);
+      } else {
+        base = floor;
+      }
+      break;
+    }
+    case 'diamond': {
+      const dx = Math.abs((px % ts) - ts / 2);
+      const dy = Math.abs((py % ts) - ts / 2);
+      base = (dx + dy) < ts / 2 ? floor : floorAlt;
+      break;
+    }
+    case 'hex': {
+      const hRow = Math.floor(py / ts);
+      const offset = (hRow & 1) ? ts / 2 : 0;
+      const hx = ((px + offset) % ts);
+      const hy = (py % ts);
+      const onEdge = hx <= 2 || hy <= 2;
+      base = onEdge ? floorAlt : floor;
+      break;
+    }
+    case 'plating': {
+      // Large metal plate panels with subtle rivet dots
+      const px2 = px % (ts * 2);
+      const py2 = py % (ts * 2);
+      const borderX = px2 <= 1 || px2 >= ts * 2 - 2;
+      const borderY = py2 <= 1 || py2 >= ts * 2 - 2;
+      if (borderX || borderY) {
+        base = darken(floor, 18);
+      } else {
+        // Rivet dots near corners
+        const cornerDist = Math.min(px2, ts * 2 - px2, py2, ts * 2 - py2);
+        if (cornerDist >= 4 && cornerDist <= 6 && (px2 <= 6 || px2 >= ts * 2 - 6) && (py2 <= 6 || py2 >= ts * 2 - 6)) {
+          base = brighten(floor, 15);
+        } else {
+          base = floor;
+        }
+      }
+      break;
+    }
+    default:
+      base = floor;
   }
+
+  return [clamp(base[0] + noise), clamp(base[1] + noise), clamp(base[2] + noise)];
 }
 
-function drawRectOutline(dst: PNG, rect: Rect, r: number, g: number, b: number, a = 255): void {
-  const x1 = Math.max(0, rect.x);
-  const y1 = Math.max(0, rect.y);
-  const x2 = Math.min(dst.width - 1, rect.x + rect.w);
-  const y2 = Math.min(dst.height - 1, rect.y + rect.h);
-  for (let t = 0; t < 2; t++) {
-    for (let x = x1; x <= x2; x++) {
-      for (const y of [y1 + t, y2 - t]) {
-        if (y < 0 || y >= dst.height) continue;
-        const idx = (y * dst.width + x) * 4;
-        dst.data[idx] = r; dst.data[idx + 1] = g; dst.data[idx + 2] = b; dst.data[idx + 3] = a;
+// ── Lookup maps (built once, O(1) per-pixel queries) ────────────────────
+
+// Walkability bitmap: 1 = walkable, 0 = not
+const walkMap = new Uint8Array(MAP_W * MAP_H);
+
+// Room index for each pixel: >=0 → index into ROOM_REGION_RECTS, -1 → corridor, -2 → non-walkable
+const roomIdx = new Int8Array(MAP_W * MAP_H).fill(-2);
+
+function buildLookups(): void {
+  // Mark room pixels
+  for (let i = 0; i < ROOM_REGION_RECTS.length; i++) {
+    const r = ROOM_REGION_RECTS[i];
+    const x1 = Math.max(0, r.x);
+    const y1 = Math.max(0, r.y);
+    const x2 = Math.min(MAP_W, r.x + r.w);
+    const y2 = Math.min(MAP_H, r.y + r.h);
+    for (let y = y1; y < y2; y++) {
+      const rowOff = y * MAP_W;
+      for (let x = x1; x < x2; x++) {
+        const off = rowOff + x;
+        walkMap[off] = 1;
+        roomIdx[off] = i;
       }
     }
-    for (let y = y1; y <= y2; y++) {
-      for (const x of [x1 + t, x2 - t]) {
-        if (x < 0 || x >= dst.width) continue;
-        const idx = (y * dst.width + x) * 4;
-        dst.data[idx] = r; dst.data[idx + 1] = g; dst.data[idx + 2] = b; dst.data[idx + 3] = a;
+  }
+  // Mark corridor pixels (only if not already a room)
+  for (const c of CORRIDOR_RECTS) {
+    const x1 = Math.max(0, c.x);
+    const y1 = Math.max(0, c.y);
+    const x2 = Math.min(MAP_W, c.x + c.w);
+    const y2 = Math.min(MAP_H, c.y + c.h);
+    for (let y = y1; y < y2; y++) {
+      const rowOff = y * MAP_W;
+      for (let x = x1; x < x2; x++) {
+        const off = rowOff + x;
+        walkMap[off] = 1;
+        if (roomIdx[off] === -2) roomIdx[off] = -1;
       }
     }
   }
 }
 
-function main() {
-  console.log('Building composite Skeld map from sprite layers...');
-  if (DEBUG) console.log('  DEBUG: writing per-layer and stage composite images');
-  if (REPORT) console.log('  REPORT: printing alignment metrics');
-  if (includeOptional.size > 0) {
-    console.log(`  Optional enabled by CLI: ${Array.from(includeOptional).join(', ')}`);
+function isWalk(x: number, y: number): boolean {
+  if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return false;
+  return walkMap[y * MAP_W + x] === 1;
+}
+
+// ── Distance-to-edge field ──────────────────────────────────────────────
+
+// Chebyshev distance from each walkable pixel to the nearest non-walkable pixel.
+// Non-walkable pixels have dist = 0.  Capped at WALL_THICKNESS + 4 for perf.
+
+const distField = new Uint8Array(MAP_W * MAP_H);
+const DIST_CAP = WALL_THICKNESS + 4;
+
+function buildDistField(): void {
+  const W = MAP_W;
+  const H = MAP_H;
+  // Initialize: walkable pixels get max, non-walkable get 0
+  for (let i = 0; i < W * H; i++) {
+    distField[i] = walkMap[i] ? DIST_CAP : 0;
   }
 
-  const canvas = createCanvas();
-  const renderedLayers: RenderedLayer[] = [];
-
-  STAGE_ORDER.forEach((stage, stageIndex) => {
-    const layers = LAYER_STACK[stage];
-    const active = layers.filter(shouldRenderLayer);
-    console.log(`\n── Stage ${stageIndex + 1}: ${stage} (${active.length} active layers) ──`);
-
-    for (const layer of active) {
-      const result = renderLayer(layer);
-      if (!result) continue;
-      compositeOver(canvas, result.image, layer.x, layer.y);
-      renderedLayers.push({ layer, rect: result.rect });
-      console.log(`    placed @ (${layer.x}, ${layer.y})`);
-      if (DEBUG) saveDebugLayer(layer, result.image);
+  // Forward pass (top-left to bottom-right)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const idx = y * W + x;
+      if (distField[idx] === 0) continue;
+      let d = distField[idx];
+      if (y > 0) {
+        d = Math.min(d, distField[(y - 1) * W + x] + 1);
+        if (x > 0) d = Math.min(d, distField[(y - 1) * W + (x - 1)] + 1);
+        if (x < W - 1) d = Math.min(d, distField[(y - 1) * W + (x + 1)] + 1);
+      }
+      if (x > 0) d = Math.min(d, distField[y * W + (x - 1)] + 1);
+      distField[idx] = d;
     }
+  }
 
-    if (DEBUG) saveDebugStage(stageIndex, stage, canvas);
-  });
+  // Backward pass (bottom-right to top-left)
+  for (let y = H - 1; y >= 0; y--) {
+    for (let x = W - 1; x >= 0; x--) {
+      const idx = y * W + x;
+      if (distField[idx] === 0) continue;
+      let d = distField[idx];
+      if (y < H - 1) {
+        d = Math.min(d, distField[(y + 1) * W + x] + 1);
+        if (x > 0) d = Math.min(d, distField[(y + 1) * W + (x - 1)] + 1);
+        if (x < W - 1) d = Math.min(d, distField[(y + 1) * W + (x + 1)] + 1);
+      }
+      if (x < W - 1) d = Math.min(d, distField[y * W + (x + 1)] + 1);
+      distField[idx] = d;
+    }
+  }
+}
 
+// ── Stage 1: Space background with stars ────────────────────────────────
+
+function drawSpaceBackground(canvas: PNG): void {
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      // Slight gradient for depth
+      const grad = Math.floor((y / MAP_H) * 6);
+      const r = SPACE_BG[0] + grad;
+      const g = SPACE_BG[1] + grad;
+      const b = SPACE_BG[2] + Math.floor(grad * 1.5);
+
+      setPixel(canvas, x, y, r, g, b);
+
+      // Stars
+      const h = hash(x, y);
+      if ((h & 0xFFF) < 3) {
+        // Bright star
+        const brightness = 140 + (h >> 12 & 0x7F);
+        const tint = (h >> 20) & 3;
+        const sr = tint === 0 ? brightness : brightness - 20;
+        const sg = brightness - 10;
+        const sb = tint === 2 ? brightness : brightness - 20;
+        setPixel(canvas, x, y, sr, sg, sb);
+      } else if ((h & 0xFFF) < 8) {
+        // Dim star
+        const brightness = 50 + (h >> 12 & 0x3F);
+        setPixel(canvas, x, y, brightness, brightness, brightness + 10);
+      }
+    }
+  }
+}
+
+// ── Stage 2: Floor patterns ─────────────────────────────────────────────
+
+function drawFloors(canvas: PNG): void {
+  for (let y = 0; y < MAP_H; y++) {
+    const rowOff = y * MAP_W;
+    for (let x = 0; x < MAP_W; x++) {
+      const ri = roomIdx[rowOff + x];
+      if (ri === -2) continue; // non-walkable
+
+      let style: RoomStyle;
+      if (ri >= 0) {
+        const roomName = ROOM_REGION_RECTS[ri].name;
+        style = ROOM_STYLES[roomName] || CORRIDOR_STYLE;
+      } else {
+        style = CORRIDOR_STYLE;
+      }
+
+      const [r, g, b] = patternColor(style, x, y);
+      setPixel(canvas, x, y, r, g, b);
+    }
+  }
+}
+
+// ── Stage 3: Walls with shading + trim ──────────────────────────────────
+
+function drawWalls(canvas: PNG): void {
+  for (let y = 0; y < MAP_H; y++) {
+    const rowOff = y * MAP_W;
+    for (let x = 0; x < MAP_W; x++) {
+      const off = rowOff + x;
+      if (walkMap[off] === 0) continue; // non-walkable, already space
+
+      const d = distField[off];
+      if (d > WALL_THICKNESS) continue; // interior floor, no wall needed
+
+      // Determine room style for trim colour
+      const ri = roomIdx[off];
+      let trim: RGB;
+      if (ri >= 0) {
+        const roomName = ROOM_REGION_RECTS[ri].name;
+        trim = (ROOM_STYLES[roomName] || CORRIDOR_STYLE).trim;
+      } else {
+        trim = CORRIDOR_STYLE.trim;
+      }
+
+      if (d <= 2) {
+        // Outer wall: very dark
+        setPixel(canvas, x, y, ...WALL_OUTER);
+      } else if (d <= 4) {
+        // Mid wall with subtle trim tint
+        const t = (d - 2) / 2;
+        const base = lerpRGB(WALL_OUTER, WALL_MID, t);
+        // Mix in a little trim colour
+        const mixed = lerpRGB(base, trim, 0.12);
+        setPixel(canvas, x, y, ...mixed);
+      } else if (d <= 6) {
+        // Inner wall / trim band
+        const t = (d - 4) / 2;
+        const base = lerpRGB(WALL_MID, WALL_INNER, t);
+        const mixed = lerpRGB(base, trim, 0.25);
+        setPixel(canvas, x, y, ...mixed);
+      } else {
+        // Transition zone: blend wall→floor (ambient occlusion)
+        const t = (d - 6) / (WALL_THICKNESS - 6);
+
+        // Get the floor colour at this pixel
+        let style: RoomStyle;
+        if (ri >= 0) {
+          style = ROOM_STYLES[ROOM_REGION_RECTS[ri].name] || CORRIDOR_STYLE;
+        } else {
+          style = CORRIDOR_STYLE;
+        }
+        const floorC = patternColor(style, x, y);
+        const wallC = lerpRGB(WALL_INNER, trim, 0.15);
+        const blended = lerpRGB(wallC, floorC, t);
+        setPixel(canvas, x, y, ...blended);
+      }
+    }
+  }
+}
+
+// ── Stage 4: Details – corridor lights, door markers, hull glow ─────────
+
+function drawDetails(canvas: PNG): void {
+  // Corridor ceiling lights: bright spots every ~80px along corridor centres
+  for (const c of CORRIDOR_RECTS) {
+    const cx = c.x + Math.floor(c.w / 2);
+    const cy = c.y + Math.floor(c.h / 2);
+
+    // Horizontal corridor (wider than tall) or vertical
+    const horizontal = c.w > c.h;
+
+    if (horizontal) {
+      for (let lx = c.x + 20; lx < c.x + c.w - 20; lx += 80) {
+        drawLight(canvas, lx, cy, 6);
+      }
+    } else {
+      for (let ly = c.y + 20; ly < c.y + c.h - 20; ly += 80) {
+        drawLight(canvas, cx, ly, 6);
+      }
+    }
+  }
+
+  // Room centre lights (larger, dimmer)
+  const roomCenters = new Map<string, { sx: number; sy: number; count: number }>();
+  for (const r of ROOM_REGION_RECTS) {
+    const existing = roomCenters.get(r.name);
+    if (existing) {
+      // Weighted average for multi-rect rooms
+      existing.sx += (r.x + r.w / 2) * (r.w * r.h);
+      existing.sy += (r.y + r.h / 2) * (r.w * r.h);
+      existing.count += r.w * r.h;
+    } else {
+      roomCenters.set(r.name, {
+        sx: (r.x + r.w / 2) * (r.w * r.h),
+        sy: (r.y + r.h / 2) * (r.w * r.h),
+        count: r.w * r.h,
+      });
+    }
+  }
+  for (const [, { sx, sy, count }] of roomCenters) {
+    const cx = Math.round(sx / count);
+    const cy = Math.round(sy / count);
+    drawLight(canvas, cx, cy, 10);
+  }
+
+  // Hull glow: slight brightening of non-walkable pixels adjacent to walkable pixels
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (walkMap[y * MAP_W + x] === 1) continue;
+
+      // Check if near a walkable pixel
+      let minDist = 20;
+      for (let dy = -12; dy <= 12; dy++) {
+        for (let dx = -12; dx <= 12; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx >= 0 && nx < MAP_W && ny >= 0 && ny < MAP_H && walkMap[ny * MAP_W + nx] === 1) {
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDist) minDist = dist;
+          }
+        }
+      }
+
+      if (minDist < 12) {
+        // Subtle hull glow
+        const intensity = Math.max(0, (12 - minDist) / 12) * 18;
+        const idx = (y * MAP_W + x) * 4;
+        canvas.data[idx] = clamp(canvas.data[idx] + intensity * 0.6);
+        canvas.data[idx + 1] = clamp(canvas.data[idx + 1] + intensity * 0.7);
+        canvas.data[idx + 2] = clamp(canvas.data[idx + 2] + intensity);
+      }
+    }
+  }
+}
+
+function drawLight(canvas: PNG, cx: number, cy: number, radius: number): void {
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const px = cx + dx;
+      const py = cy + dy;
+      if (px < 0 || px >= MAP_W || py < 0 || py >= MAP_H) continue;
+      if (walkMap[py * MAP_W + px] === 0) continue;
+
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > radius) continue;
+
+      const intensity = (1 - dist / radius) * 35;
+      const idx = (py * MAP_W + px) * 4;
+      canvas.data[idx] = clamp(canvas.data[idx] + intensity);
+      canvas.data[idx + 1] = clamp(canvas.data[idx + 1] + intensity);
+      canvas.data[idx + 2] = clamp(canvas.data[idx + 2] + intensity * 0.8);
+    }
+  }
+}
+
+// ── Main ────────────────────────────────────────────────────────────────
+
+function main(): void {
+  console.log('Building Skeld map from collision geometry...');
+  console.log(`  Canvas: ${MAP_W}x${MAP_H}`);
+  console.log(`  Rooms:  ${ROOM_REGION_RECTS.length} rects`);
+  console.log(`  Corridors: ${CORRIDOR_RECTS.length} rects`);
+
+  // Build spatial lookup tables
+  console.log('  Building spatial lookups...');
+  buildLookups();
+  buildDistField();
+
+  const walkableCount = walkMap.reduce((s, v) => s + v, 0);
+  console.log(`  Walkable pixels: ${walkableCount.toLocaleString()} / ${(MAP_W * MAP_H).toLocaleString()} (${(walkableCount / (MAP_W * MAP_H) * 100).toFixed(1)}%)`);
+
+  const canvas = createCanvas();
+
+  // Stage 1: Space background
+  console.log('  Stage 1: Space background with stars...');
+  drawSpaceBackground(canvas);
+  if (DEBUG) savePng('stage-1-space.png', canvas);
+
+  // Stage 2: Floor patterns
+  console.log('  Stage 2: Room and corridor floors...');
+  drawFloors(canvas);
+  if (DEBUG) savePng('stage-2-floors.png', canvas);
+
+  // Stage 3: Wall shading
+  console.log('  Stage 3: Wall shading and trim...');
+  drawWalls(canvas);
+  if (DEBUG) savePng('stage-3-walls.png', canvas);
+
+  // Stage 4: Details
+  console.log('  Stage 4: Lights and hull glow...');
+  drawDetails(canvas);
+  if (DEBUG) savePng('stage-4-details.png', canvas);
+
+  // Save final
   const outPath = path.join(OUT_DIR, 'skeld-map.png');
   const buffer = PNG.sync.write(canvas);
   fs.writeFileSync(outPath, buffer);
   console.log(`\n  -> ${outPath}`);
-  console.log(`     ${CANVAS_W}x${CANVAS_H}, ${Math.round(buffer.length / 1024)} KB`);
-
-  if (REPORT) {
-    printAlignmentReport(renderedLayers);
-  }
-
-  if (DEBUG) {
-    // Generate collision-rect overlay on top of the composite map
-    const overlay = clonePng(canvas);
-    for (const rect of WALKABLE_ROOM_RECTS) {
-      drawRectOutline(overlay, rect, 0, 255, 0); // green for rooms
-    }
-    for (const rect of CORRIDOR_RECTS) {
-      drawRectOutline(overlay, rect, 255, 255, 0); // yellow for corridors
-    }
-    saveDebugImage('collision-overlay.png', overlay);
-    console.log('  DEBUG: collision-overlay.png written');
-  }
-
-  console.log('\nComposite map built successfully.');
+  console.log(`     ${MAP_W}x${MAP_H}, ${Math.round(buffer.length / 1024)} KB`);
+  console.log('\nMap built successfully.');
 }
 
 main();
