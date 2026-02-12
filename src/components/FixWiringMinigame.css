@@ -1,0 +1,205 @@
+/* ── Fix Wiring Mini-Game (Among Us style) ──────────────────────── */
+
+.fix-wiring-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease;
+}
+
+.fix-wiring-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(580px, 88vw);
+  max-height: 90vh;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px #3d4250,
+    0 8px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* Header strip */
+.fix-wiring-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 16px 8px;
+  background: linear-gradient(180deg, #3d4250 0%, #2a2e3a 100%);
+  border-bottom: 3px solid #f5c83c;
+}
+
+.fix-wiring-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f5c83c;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.fix-wiring-subtitle {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  letter-spacing: 0.04em;
+}
+
+/* The wiring panel area */
+.fix-wiring-panel {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #1a1d24;
+  background-image: url('/wires-panel-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 0;
+  transition: box-shadow 0.4s ease;
+}
+
+.fix-wiring-panel.fix-wiring-complete {
+  box-shadow: inset 0 0 60px rgba(46, 160, 67, 0.3);
+}
+
+.fix-wiring-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+/* Wire nub circles */
+.fix-wiring-nub {
+  transition: stroke 0.12s ease, r 0.12s ease;
+}
+
+.fix-wiring-node-group:hover .fix-wiring-nub:not(.connected) {
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.fix-wiring-nub.selected {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+}
+
+/* Labels on the panel */
+.fix-wiring-label {
+  fill: #ffffff;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  paint-order: stroke fill;
+  stroke: #0d1117;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* Feedback messages */
+.fix-wiring-wrong {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  pointer-events: none;
+  animation: slideUp 0.25s ease;
+  background: rgba(229, 57, 53, 0.85);
+  color: #fff;
+  border: 2px solid #e53935;
+}
+
+/* Bottom bar — always reserves space so the modal never resizes */
+.fix-wiring-bottom-bar {
+  flex: 0 0 auto;
+  height: 52px;
+  background: #1a1d24;
+  border-top: 3px solid #3d4250;
+  display: flex;
+  align-items: stretch;
+}
+
+.fix-wiring-bottom-placeholder {
+  display: block;
+  width: 100%;
+}
+
+/* Among Us–style Task Complete button */
+.fix-wiring-complete-btn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  background: linear-gradient(180deg, #7ee787 0%, #3fb950 50%, #2ea043 100%);
+  border: none;
+  color: #0d1117;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  z-index: 20;
+  transition: filter 0.12s ease, box-shadow 0.12s ease;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 20px rgba(46, 160, 67, 0.4);
+  animation: complete-btn-glow 1.5s ease-in-out infinite;
+}
+
+.fix-wiring-complete-btn:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 28px rgba(46, 160, 67, 0.6);
+}
+
+.fix-wiring-complete-btn:active {
+  filter: brightness(0.92);
+}
+
+@keyframes complete-btn-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(46, 160, 67, 0.4); }
+  50% { box-shadow: 0 0 32px rgba(46, 160, 67, 0.65); }
+}
+
+/* Drag cursor states */
+.fix-wiring-panel.fix-wiring-idle {
+  cursor: default;
+}
+
+.fix-wiring-panel.fix-wiring-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.fix-wiring-panel.fix-wiring-dragging * {
+  cursor: grabbing !important;
+}
+
+/* Live drag wire pulse */
+.fix-wiring-live-wire {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+/* Drop target glow ring */
+.fix-wiring-drop-glow {
+  animation: drop-glow-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes drop-glow-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}

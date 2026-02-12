@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import './ElectricalPanel.css';
 
 const ROW_HEIGHT = 44;
 const COL_HEADER_HEIGHT = 28;

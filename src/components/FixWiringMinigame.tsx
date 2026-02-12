@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import './FixWiringMinigame.css';
 
 /* ── Among Us wire colours ─────────────────────────────────────── */
 
@@ -376,21 +377,25 @@ export function FixWiringMinigame({ onComplete, onClose }: Props) {
           )}
         </div>
 
-        {/* Task Complete button — only visible after solving */}
-        {completed && (
-          <button
-            type="button"
-            className="fix-wiring-complete-btn"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onComplete();
-            }}
-            aria-label="Task complete — click to dismiss"
-          >
-            TASK COMPLETE
-          </button>
-        )}
+        {/* Bottom bar — always present to reserve space; shows Task Complete when solved */}
+        <div className="fix-wiring-bottom-bar">
+          {completed ? (
+            <button
+              type="button"
+              className="fix-wiring-complete-btn"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onComplete();
+              }}
+              aria-label="Task complete — click to dismiss"
+            >
+              TASK COMPLETE
+            </button>
+          ) : (
+            <span className="fix-wiring-bottom-placeholder" />
+          )}
+        </div>
       </div>
     </div>
   );
