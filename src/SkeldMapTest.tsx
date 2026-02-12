@@ -7,10 +7,14 @@ import {
   MASK_H,
   ROOM_REGION_RECTS as ROOM_REGIONS,
 } from '../shared/skeldGeometry';
+import { ElectricalPanel, PANEL_CONFIGS } from './components/ElectricalPanel';
+import { ElectricalPanelSelector } from './components/ElectricalPanelSelector';
 
 interface Props {
   onBack: () => void;
 }
+
+type ElectricalView = 'selector' | 'patient' | 'donor' | 'product' | null;
 
 const MAP_URL = '/skeld-map.png';
 
@@ -62,7 +66,9 @@ export default function SkeldMapTest({ onBack }: Props) {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
   const [walkFrame, setWalkFrame] = useState(0);
+  const [electricalView, setElectricalView] = useState<ElectricalView>(null);
   const keysRef = useRef(new Set<string>());
+  const prevRoomRef = useRef<string | null>(null);
   const posRef = useRef({ x: SPAWN_X, y: SPAWN_Y });
   const rafRef = useRef<number>(0);
   const walkTimerRef = useRef<number>(0);
@@ -179,6 +185,16 @@ export default function SkeldMapTest({ onBack }: Props) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
+      if (key === 'e') {
+        const room = getCurrentRoom(posRef.current.x, posRef.current.y);
+        if (room === 'Electrical') {
+          e.preventDefault();
+          setElectricalView((prev) =>
+            prev == null ? 'selector' : prev === 'selector' ? null : 'selector'
+          );
+          return;
+        }
+      }
       if (
         ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)
       ) {
@@ -228,6 +244,15 @@ export default function SkeldMapTest({ onBack }: Props) {
   const currentSprite = isMoving ? SPRITE_WALK[walkFrame] : SPRITE_IDLE;
   const currentRoom = getCurrentRoom(pos.x, pos.y);
 
+  // When crew member enters Electrical, present the panel selector
+  useEffect(() => {
+    const prev = prevRoomRef.current;
+    prevRoomRef.current = currentRoom ?? null;
+    if (prev !== 'Electrical' && currentRoom === 'Electrical') {
+      setElectricalView('selector');
+    }
+  }, [currentRoom]);
+
   return (
     <div className="skeld-viewport">
       {/* Map container moves to keep player centered */}
@@ -276,12 +301,30 @@ export default function SkeldMapTest({ onBack }: Props) {
           {currentRoom && (
             <div className="hud-room">{currentRoom}</div>
           )}
-          <div className="hud-hint">WASD or Arrow Keys to move</div>
+          <div className="hud-hint">
+            WASD or Arrow Keys to move
+            {currentRoom === 'Electrical' && electricalView == null && (
+              <span className="hud-task-hint"> · Press E to open electrical panels</span>
+            )}
+          </div>
           <div className="hud-coords">
             X: {Math.round(pos.x)} &nbsp; Y: {Math.round(pos.y)}
           </div>
         </div>
       </div>
+
+      {electricalView === 'selector' && (
+        <ElectricalPanelSelector
+          onSelect={(id) => setElectricalView(id)}
+          onClose={() => setElectricalView(null)}
+        />
+      )}
+      {electricalView !== null && electricalView !== 'selector' && (
+        <ElectricalPanel
+          config={PANEL_CONFIGS[electricalView]}
+          onClose={() => setElectricalView('selector')}
+        />
+      )}
     </div>
   );
 }

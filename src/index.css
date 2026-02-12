@@ -1080,3 +1080,263 @@ body {
   letter-spacing: 0.04em;
 }
 
+.hud-task-hint {
+  color: var(--skeld-accent);
+  font-weight: 600;
+}
+
+/* ── Electrical Panel (Product / Patient / Donor) ───────────────── */
+
+.electrical-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.electrical-panel-drag-wire {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 201;
+}
+
+.electrical-panel-modal {
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow), 0 0 0 1px rgba(245, 158, 11, 0.15);
+  width: fit-content;
+  max-width: min(calc(100vw - 32px), 420px);
+  z-index: 202;
+}
+
+.electrical-panel-header {
+  position: relative;
+  margin-bottom: 16px;
+  padding-right: 28px;
+}
+
+.electrical-panel-header h3 {
+  font-size: 1.15rem;
+  color: var(--skeld-accent);
+  margin-bottom: 4px;
+}
+
+.electrical-panel-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.electrical-panel-close {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.electrical-panel-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.electrical-panel-product .electrical-panel-body {
+  position: relative;
+  width: max-content;
+}
+
+.electrical-panel-wires {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.electrical-panel-two-cols {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+}
+
+.electrical-panel-wire-gap {
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.electrical-panel-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.electrical-panel-col-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--skeld-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  margin-bottom: 0;
+}
+
+.electrical-attribute-node,
+.electrical-attribute-slot {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 10px;
+  margin-bottom: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.electrical-attribute-node {
+  border-left: 3px solid var(--skeld-accent);
+  margin-right: 4px;
+  cursor: grab;
+}
+
+.electrical-attribute-node:active {
+  cursor: grabbing;
+}
+
+.electrical-attribute-node:hover {
+  border-color: var(--skeld-accent);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4);
+}
+
+.electrical-attribute-node.dragging {
+  opacity: 0.6;
+}
+
+.electrical-attribute-node.connected {
+  opacity: 0.9;
+}
+
+.electrical-attribute-slot {
+  border-right: 3px solid var(--border-light);
+  margin-left: 4px;
+}
+
+.electrical-attribute-slot:hover,
+.electrical-attribute-slot.drop-target {
+  border-color: var(--skeld-accent);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
+}
+
+.electrical-attribute-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: lowercase;
+}
+
+.electrical-slot-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ── Electrical Panel Selector ────────────────────────────────── */
+
+.electrical-selector-overlay {
+  /* uses .electrical-panel-overlay base */
+}
+
+.electrical-selector-modal {
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow), 0 0 0 1px rgba(245, 158, 11, 0.15);
+  width: fit-content;
+  max-width: min(calc(100vw - 32px), 420px);
+}
+
+.electrical-selector-header {
+  position: relative;
+  margin-bottom: 16px;
+  padding-right: 28px;
+}
+
+.electrical-selector-header h3 {
+  font-size: 1.15rem;
+  color: var(--skeld-accent);
+  margin-bottom: 4px;
+}
+
+.electrical-selector-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.electrical-selector-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.electrical-selector-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-width: 200px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-left: 4px solid var(--skeld-accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.electrical-selector-card:hover {
+  border-color: var(--skeld-accent);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
+}
+
+.electrical-selector-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.electrical-selector-card-attrs {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
